@@ -1,0 +1,83 @@
+---
+title: "Project"
+author: "anonymous"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r, warning=FALSE, results="hide", message=FALSE}
+library(aaltobda)
+library(cmdstanr)
+library(ggplot2)
+library(posterior)
+library(bayesplot)
+library(rstan)
+library(tidyr)
+library(dplyr)
+library(gridExtra)
+library(loo)
+```
+
+```{r}
+credit_risk <- read.csv(file="german_credit_data.csv")
+
+summary(credit_risk)
+```
+
+```{r}
+miss <- function(x){sum(is.na(x))/length(x)*100}
+apply(credit_risk, 2, miss)
+```
+```{r}
+get_mode <- function(x) {
+  ux <- unique(x)
+  ux <- na.omit(ux)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+credit_risk$`Saving.accounts`[is.na(credit_risk$`Saving.accounts`)] <- get_mode(credit_risk$`Saving.accounts`)
+credit_risk$`Checking.account`[is.na(credit_risk$`Checking.account`)] <- get_mode(credit_risk$`Checking.account`)
+
+miss <- function(x){sum(is.na(x))/length(x)*100}
+apply(credit_risk, 2, miss)
+```
+
+
+```{r}
+file <- file.path("test.stan")
+model <- cmdstan_model(file)
+model$print()
+```
+
+```{r}
+credit_risk_train <- head(credit_risk, 500)
+credit_risk_test <- tail(credit_risk, 500)
+
+y_train = as.numeric(factor(credit_risk_train$Risk)) - 1
+y_test = as.numeric(factor(credit_risk_test$Risk)) - 1
+
+X_train = subset(credit_risk_train, select=-c(`X`, `Risk`)) 
+X_test = subset(credit_risk_test, select=-c(`X`, `Risk`)) 
+
+credit_data <- list(N=nrow(X_train), 
+                    J=ncol(X_train), 
+                    X=X_train, 
+                    y=y_train,
+                    N_test=nrow(X_test),
+                    X_test=X_test,
+                    y_test=y_test)
+
+fit <- model$sample(data=credit_data)
+```
+```{r}
+fit$summary()
+```
+
+```{r}
+ggplot(data=as_draws_df(fit$summary()[,"rhat"])) +
+  geom_histogram(aes(x=`rhat`))
+```
+
+
+
+
