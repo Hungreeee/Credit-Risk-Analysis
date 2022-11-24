@@ -71,14 +71,11 @@ r_hat = summary(fit)$summary[,"Rhat"]
 ggplot(data=as.data.frame(r_hat)) +
   geom_histogram(aes(x=`r_hat`))
 ```
+```{r}
+mcmc_neff(neff_ratio(fit))
+```
 
 Posterior predictive check
-```{r}
-ypred500 <- rstan::extract(fit)$y_pred[500,]
-par(mfrow=c(1,2))
-hist(y_test)
-hist(ypred)
-```
 ```{r}
 ypred <- as.matrix(fit, pars="y_pred")
 ppc_dens_overlay(y_test, ypred[1:50, ])
