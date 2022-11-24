@@ -28,6 +28,7 @@ summary(credit_risk)
 miss <- function(x){sum(is.na(x))/length(x)*100}
 apply(credit_risk, 2, miss)
 ```
+
 ```{r}
 get_mode <- function(x) {
   ux <- unique(x)
@@ -42,14 +43,8 @@ miss <- function(x){sum(is.na(x))/length(x)*100}
 apply(credit_risk, 2, miss)
 ```
 
-
 ```{r}
-file <- file.path("test.stan")
-model <- cmdstan_model(file)
-model$print()
-```
 
-```{r}
 credit_risk_train <- head(credit_risk, 500)
 credit_risk_test <- tail(credit_risk, 500)
 
@@ -59,23 +54,35 @@ y_test = as.numeric(factor(credit_risk_test$Risk)) - 1
 X_train = subset(credit_risk_train, select=-c(`X`, `Risk`)) 
 X_test = subset(credit_risk_test, select=-c(`X`, `Risk`)) 
 
-credit_data <- list(N=nrow(X_train), 
+credit_data <- list(N_train=nrow(X_train), 
                     J=ncol(X_train), 
-                    X=X_train, 
-                    y=y_train,
+                    X_train=X_train, 
+                    y_train=y_train,
                     N_test=nrow(X_test),
                     X_test=X_test,
                     y_test=y_test)
 
-fit <- model$sample(data=credit_data)
-```
-```{r}
-fit$summary()
+fit <- stan(file="test.stan", data=credit_data, chains=4, warmup=1000, iter=2000)
 ```
 
+Rhat
 ```{r}
-ggplot(data=as_draws_df(fit$summary()[,"rhat"])) +
-  geom_histogram(aes(x=`rhat`))
+r_hat = summary(fit)$summary[,"Rhat"]
+ggplot(data=as.data.frame(r_hat)) +
+  geom_histogram(aes(x=`r_hat`))
+```
+
+Posterior predictive check
+```{r}
+ypred500 <- rstan::extract(fit)$y_pred[500,]
+par(mfrow=c(1,2))
+hist(y_test)
+hist(ypred)
+```
+```{r}
+ypred <- as.matrix(fit, pars="y_pred")
+ppc_dens_overlay(y_test, ypred[1:50, ])
+ppc_hist(y_test, ypred[1:5, ])
 ```
 
 
