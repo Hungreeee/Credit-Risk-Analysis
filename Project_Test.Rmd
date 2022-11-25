@@ -19,6 +19,8 @@ library(loo)
 ```
 
 ```{r}
+set.seed(123)
+
 credit_risk <- read.csv(file="german_credit_data.csv")
 
 summary(credit_risk)
@@ -44,42 +46,100 @@ apply(credit_risk, 2, miss)
 ```
 
 ```{r}
+# Convert data into numerical data
+credit_risk$Sex = as.numeric(factor(credit_risk$Sex))
+credit_risk$Housing = as.numeric(factor(credit_risk$Housing))
+credit_risk$Saving.accounts = as.numeric(factor(credit_risk$Saving.accounts))
+credit_risk$Checking.account = as.numeric(factor(credit_risk$Checking.account))
+credit_risk$Purpose = as.numeric(factor(credit_risk$Purpose))
+credit_risk$Risk = as.numeric(factor(credit_risk$Risk)) - 1
 
+# Standardize data
+credit_risk <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk", "Purpose")], ~(scale(.) %>% as.vector))
+```
+
+```{r}
 credit_risk_train <- head(credit_risk, 500)
 credit_risk_test <- tail(credit_risk, 500)
 
-y_train = as.numeric(factor(credit_risk_train$Risk)) - 1
-y_test = as.numeric(factor(credit_risk_test$Risk)) - 1
+y_train = credit_risk_train$Risk
+y_test = credit_risk_test$Risk
 
 X_train = subset(credit_risk_train, select=-c(`X`, `Risk`)) 
 X_test = subset(credit_risk_test, select=-c(`X`, `Risk`)) 
 
 credit_data <- list(N_train=nrow(X_train), 
-                    J=ncol(X_train), 
+                    D=ncol(X_train), 
                     X_train=X_train, 
                     y_train=y_train,
                     N_test=nrow(X_test),
-                    X_test=X_test,
-                    y_test=y_test)
+                    X_test=X_test)
 
-fit <- stan(file="test.stan", data=credit_data, chains=4, warmup=1000, iter=2000)
+non_hierarchical_fit <- stan(file="non-hierarchical.stan", data=credit_data, chains=4, iter=2000, warmup=1000)
 ```
+
+```{r}
+credit_risk_train <- head(credit_risk, 500)
+credit_risk_test <- tail(credit_risk, 500)
+
+y_train = credit_risk_train$Risk
+y_test = credit_risk_test$Risk
+
+X_train = subset(credit_risk_train, select=-c(`X`, `Risk`, `Purpose`)) 
+X_test = subset(credit_risk_test, select=-c(`X`, `Risk`, `Purpose`)) 
+
+ll_train = credit_risk_train$Purpose
+ll_test = credit_risk_test$Purpose
+
+credit_data <- list(N_train=nrow(X_train), 
+                    D=ncol(X_train), 
+                    L_train=length(unique(ll_train)),
+                    ll_train=ll_train,
+                    X_train=X_train, 
+                    y_train=y_train,
+                    N_test=nrow(X_test),
+                    L_test=length(unique(ll_test)),
+                    ll_test=ll_test,
+                    X_test=X_test)
+
+hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data, chains=4, iter=2000, warmup=1000)
+```
+
+```{r}
+print(hierarchical_fit)
+```
+
 
 Rhat
 ```{r}
-r_hat = summary(fit)$summary[,"Rhat"]
+r_hat = summary(non_hierarchical_fit)$summary[,"Rhat"]
 ggplot(data=as.data.frame(r_hat)) +
   geom_histogram(aes(x=`r_hat`))
 ```
+
 ```{r}
-mcmc_neff(neff_ratio(fit))
+mcmc_neff(neff_ratio(non_hierarchical_fit))
+
+mcmc_neff(neff_ratio(hierarchical_fit))
+```
+
+```{r}
+r_hat = summary(hierarchical_fit)$summary[,"Rhat"]
+ggplot(data=as.data.frame(r_hat)) +
+  geom_histogram(aes(x=`r_hat`))
 ```
 
 Posterior predictive check
 ```{r}
-ypred <- as.matrix(fit, pars="y_pred")
+# Extract fit
+ypred <- as.matrix(non_hierarchical_fit, pars="y_pred")
+ypred_hie <- as.matrix(hierarchical_fit, pars="y_pred")
+
 ppc_dens_overlay(y_test, ypred[1:50, ])
 ppc_hist(y_test, ypred[1:5, ])
+
+ppc_dens_overlay(y_test, ypred_hie[1:50, ])
+ppc_hist(y_test, ypred_hie[1:5, ])
 ```
 
 
