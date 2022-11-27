@@ -220,7 +220,8 @@ mcmc_neff(neff_ratio(hierarchical_fit))
 ```{r}
 r_hat = summary(hierarchical_fit)$summary[,"Rhat"]
 ggplot(data=as.data.frame(r_hat)) +
-  geom_histogram(aes(x=`r_hat`))
+  geom_histogram(aes(x=`r_hat`)) 
+
 ```
 
 Posterior predictive check
@@ -239,3 +240,8 @@ ppc_hist(y_test, ypred_hie[1:5, ])
 
 
 
+```{r}
+x = 1:100
+plot(dinvgamma(x, 1, 0.01))
+plot(dinvchisq(x, 100))
+```
