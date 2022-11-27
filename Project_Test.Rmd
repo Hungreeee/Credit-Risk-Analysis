@@ -138,7 +138,7 @@ ggcorrplot(cor(credit_risk), lab = TRUE, lab_size = 3)
 ```
 
 ```{r}
-ggplot(credit_risk, aes(x=Duration, y=Credit.amount)) +
+ggplot(credit_risk, aes(x=log(Duration), y=log(Credit.amount))) +
   geom_point() +
   geom_smooth(method="lm")
 ```
@@ -230,18 +230,10 @@ Posterior predictive check
 ypred <- as.matrix(non_hierarchical_fit, pars="y_pred")
 ypred_hie <- as.matrix(hierarchical_fit, pars="y_pred")
 
-ppc_dens_overlay(y_test, ypred[1:10, ])
+ppc_dens_overlay(y_test, ypred[1:50, ])
 ppc_hist(y_test, ypred[1:5, ])
 
-ppc_dens_overlay(y_test, ypred_hie[1:10, ])
+ppc_dens_overlay(y_test, ypred_hie[1:50, ])
 ppc_hist(y_test, ypred_hie[1:5, ])
 ```
 
-
-
-
-```{r}
-x = 1:100
-plot(dinvgamma(x, 1, 0.01))
-plot(dinvchisq(x, 100))
-```

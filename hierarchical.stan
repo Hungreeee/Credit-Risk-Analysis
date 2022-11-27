@@ -34,6 +34,9 @@ model {
   mu[3] ~ normal(0, 0.01);
   sigma[3] ~ inv_gamma(1, 0.01);
   
+  mu[4] ~ normal(0, 0.01);
+  sigma[4] ~ inv_gamma(1, 0.01);
+  
   mu[6] ~ normal(0, 0.01);
   sigma[6] ~ inv_gamma(1, 0.01);
   
@@ -50,6 +53,11 @@ generated quantities {
   
   for(i in 1:N_test) 
     y_pred[i] = bernoulli_logit_rng(beta_0[ll_test[i]] + X_test[i] * beta[ll_test[i]]);
+    
+  vector[N_train] log_lik;
+  for(i in 1:N_train) 
+    log_lik[i] = bernoulli_logit_lpmf(y_train[i] | beta_0[ll_train[i]] + X_train[i] * beta[ll_train[i]]);
+  
 }
 
 
