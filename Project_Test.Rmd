@@ -196,7 +196,7 @@ credit_data <- list(N_train=nrow(X_train),
                     ll_test=ll_test,
                     X_test=X_test)
 
-hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data, chains=1, iter=1000, warmup=500)
+hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data, chains=4, iter=2000, warmup=1000)
 ```
 
 ```{r}
@@ -229,10 +229,10 @@ Posterior predictive check
 ypred <- as.matrix(non_hierarchical_fit, pars="y_pred")
 ypred_hie <- as.matrix(hierarchical_fit, pars="y_pred")
 
-ppc_dens_overlay(y_test, ypred[1:50, ])
+ppc_dens_overlay(y_test, ypred[1:10, ])
 ppc_hist(y_test, ypred[1:5, ])
 
-ppc_dens_overlay(y_test, ypred_hie[1:50, ])
+ppc_dens_overlay(y_test, ypred_hie[1:10, ])
 ppc_hist(y_test, ypred_hie[1:5, ])
 ```
 

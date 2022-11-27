@@ -24,17 +24,21 @@ parameters {
 
 model {
   mu_0 ~ normal(0, 1);
-  sigma_0 ~ normal(0, 1);
+  sigma_0 ~ inv_chi_square(1);
   
   beta_0 ~ normal(mu_0, sigma_0);
   
   mu ~ normal(0, 1);
-  sigma ~ normal(0, 1);
+  sigma ~ inv_chi_square(1);
   
-  for(i in 1:D) {
-    for(j in 1:L_train) {
-      beta[i, j] ~ normal(mu[i], sigma[i]);
-    }
+  mu[3] ~ normal(0, 0.1);
+  sigma[3] ~ inv_chi_square(100);
+  
+  mu[8] ~ normal(0, 0.1);
+  sigma[8] ~ inv_chi_square(100);
+  
+  for(i in 1:L_train) {
+    beta[i] ~ normal(mu, sigma);
   }
   
   for(i in 1:N_train) 
