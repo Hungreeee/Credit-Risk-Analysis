@@ -6,15 +6,14 @@ output: pdf_document
 ---
 
 ```{r, warning=FALSE, results="hide", message=FALSE}
-library(aaltobda)
-library(cmdstanr)
 library(ggplot2)
 library(posterior)
 library(bayesplot)
 library(rstan)
 library(tidyr)
 library(dplyr)
-library(gridExtra)
+library(ggcorrplot)
+library(plyr)
 library(loo)
 ```
 
@@ -27,9 +26,15 @@ summary(credit_risk)
 ```
 
 ```{r}
+credit_risk <- subset(credit_risk, select=-c(`X`))
+```
+
+```{r}
 miss <- function(x){sum(is.na(x))/length(x)*100}
 apply(credit_risk, 2, miss)
 ```
+
+
 
 ```{r}
 get_mode <- function(x) {
@@ -46,6 +51,81 @@ apply(credit_risk, 2, miss)
 ```
 
 ```{r}
+ggplot(credit_risk, aes(x=Age, fill=Risk)) +
+  geom_bar()
+```
+```{r}
+ggplot(credit_risk, aes(x=Sex, fill=Risk)) +
+  geom_bar()
+```
+```{r}
+ggplot(credit_risk, aes(x=Job, fill=Risk)) +
+  geom_bar()
+```
+```{r}
+ggplot(credit_risk, aes(x=Housing, fill=Risk)) +
+  geom_bar()
+```
+
+```{r}
+ggplot(credit_risk, aes(x=Saving.accounts, fill=Risk)) +
+  geom_bar()
+```
+```{r}
+credit_risk$Saving.accounts <- plyr::mapvalues(credit_risk$Saving.accounts, 
+                                         from =c("little","moderate","quite rich","rich"), 
+                                         to = c("little","moderate","rich","rich"))
+```
+
+```{r}
+ggplot(credit_risk, aes(x=Saving.accounts, fill=Risk)) +
+  geom_bar()
+```
+
+
+```{r}
+ggplot(credit_risk, aes(x=Checking.account, fill=Risk)) +
+  geom_bar()
+```
+
+```{r}
+ggplot(credit_risk, aes(x=Credit.amount, fill=Risk)) +
+  geom_bar()
+```
+
+```{r}
+credit_risk <- credit_risk[credit_risk$Credit.amount < 10000,]
+```
+
+```{r}
+ggplot(credit_risk, aes(x=Credit.amount, fill=Risk)) +
+  geom_bar()
+```
+
+```{r}
+ggplot(credit_risk, aes(x=Duration, fill=Risk)) +
+  geom_bar()
+```
+
+```{r}
+ggplot(credit_risk, aes(x=Purpose, fill=Risk)) +
+  geom_bar()
+```
+
+```{r}
+credit_risk$Purpose <- plyr::mapvalues(credit_risk$Purpose,
+                                       from = c("business","car","domestic appliances",
+                                      "education","furniture/equipment","radio/TV","repairs","vacation/others"), 
+                                      to = c("business","car","furniture/equipment","education",
+                                             "furniture/equipment","radio/TV","others","others")) 
+```
+
+```{r}
+ggplot(credit_risk, aes(x=Purpose, fill=Risk)) +
+  geom_bar()
+```
+
+```{r}
 # Convert data into numerical data
 credit_risk$Sex = as.numeric(factor(credit_risk$Sex))
 credit_risk$Housing = as.numeric(factor(credit_risk$Housing))
@@ -54,19 +134,33 @@ credit_risk$Checking.account = as.numeric(factor(credit_risk$Checking.account))
 credit_risk$Purpose = as.numeric(factor(credit_risk$Purpose))
 credit_risk$Risk = as.numeric(factor(credit_risk$Risk)) - 1
 
-# Standardize data
-credit_risk <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk", "Purpose")], ~(scale(.) %>% as.vector))
+ggcorrplot(cor(credit_risk), lab = TRUE, lab_size = 3)
 ```
 
 ```{r}
-credit_risk_train <- head(credit_risk, 500)
-credit_risk_test <- tail(credit_risk, 500)
+ggplot(credit_risk, aes(x=Duration, y=Credit.amount)) +
+  geom_point() +
+  geom_smooth(method="lm")
+```
+
+
+
+```{r}
+# Standardize data
+credit_risk_hie <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk", "Purpose")], ~(scale(.) %>% as.vector))
+
+credit_risk_non_hie <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk")], ~(scale(.) %>% as.vector))
+```
+
+```{r}
+credit_risk_train <- head(credit_risk_non_hie, 500)
+credit_risk_test <- tail(credit_risk_non_hie, 500)
 
 y_train = credit_risk_train$Risk
 y_test = credit_risk_test$Risk
 
-X_train = subset(credit_risk_train, select=-c(`X`, `Risk`)) 
-X_test = subset(credit_risk_test, select=-c(`X`, `Risk`)) 
+X_train = subset(credit_risk_train, select=-c(`Risk`)) 
+X_test = subset(credit_risk_test, select=-c(`Risk`)) 
 
 credit_data <- list(N_train=nrow(X_train), 
                     D=ncol(X_train), 
@@ -79,14 +173,14 @@ non_hierarchical_fit <- stan(file="non-hierarchical.stan", data=credit_data, cha
 ```
 
 ```{r}
-credit_risk_train <- head(credit_risk, 500)
-credit_risk_test <- tail(credit_risk, 500)
+credit_risk_train <- head(credit_risk_hie, 500)
+credit_risk_test <- tail(credit_risk_hie, 500)
 
 y_train = credit_risk_train$Risk
 y_test = credit_risk_test$Risk
 
-X_train = subset(credit_risk_train, select=-c(`X`, `Risk`, `Purpose`)) 
-X_test = subset(credit_risk_test, select=-c(`X`, `Risk`, `Purpose`)) 
+X_train = subset(credit_risk_train, select=-c(`Risk`, `Purpose`)) 
+X_test = subset(credit_risk_test, select=-c(`Risk`, `Purpose`)) 
 
 ll_train = credit_risk_train$Purpose
 ll_test = credit_risk_test$Purpose
@@ -102,7 +196,7 @@ credit_data <- list(N_train=nrow(X_train),
                     ll_test=ll_test,
                     X_test=X_test)
 
-hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data, chains=4, iter=2000, warmup=1000)
+hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data, chains=1, iter=1000, warmup=500)
 ```
 
 ```{r}

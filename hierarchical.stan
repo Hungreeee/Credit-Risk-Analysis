@@ -2,13 +2,13 @@ data {
   int<lower=0> N_train; // Observation
   int<lower=0> D; // Columns
   int<lower=0> L_train;
-  row_vector[D] X_train[N_train]; 
+  matrix[N_train, D] X_train; 
   int<lower=0, upper=L_train> ll_train[N_train];
   int<lower=0, upper=1> y_train[N_train];
   
   int<lower=0> N_test;
   int<lower=0> L_test;
-  row_vector[D] X_test[N_test]; 
+  matrix[N_test, D] X_test; 
   int<lower=0, upper=L_test> ll_test[N_test];
 }
 
@@ -23,13 +23,15 @@ parameters {
 }
 
 model {
-  mu_0 ~ normal(0, 2);
-  sigma_0 ~ normal(0, 2);
+  mu_0 ~ normal(0, 1);
+  sigma_0 ~ normal(0, 1);
+  
   beta_0 ~ normal(mu_0, sigma_0);
   
+  mu ~ normal(0, 1);
+  sigma ~ normal(0, 1);
+  
   for(i in 1:D) {
-    mu[i] ~ normal(0, 2);
-    sigma[i] ~ normal(0, 2);
     for(j in 1:L_train) {
       beta[i, j] ~ normal(mu[i], sigma[i]);
     }

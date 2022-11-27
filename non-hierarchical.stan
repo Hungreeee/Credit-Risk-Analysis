@@ -15,16 +15,9 @@ parameters {
 }
 
 model {
-  beta_0 ~ normal(0, 2);
-  beta[1] ~ normal(0, 2);
-  beta[2] ~ normal(0, 2);
-  beta[3] ~ normal(0, 2);
-  beta[4] ~ normal(0, 2);
-  beta[5] ~ normal(0, 2);
-  beta[6] ~ normal(0, 2);
-  beta[7] ~ normal(0, 2);
-  beta[8] ~ normal(0, 2);
-  beta[9] ~ normal(0, 2);
+  beta_0 ~ normal(0, 1);
+  beta ~ normal(0, 1);
+  beta[8] ~ normal(0, 0.1);
   y_train ~ bernoulli_logit(beta_0 + X_train * beta);
 }
 
