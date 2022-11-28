@@ -34,11 +34,11 @@ model {
   mu[3] ~ normal(0, 0.01);
   sigma[3] ~ inv_gamma(1, 0.01);
   
-  mu[4] ~ normal(0, 0.01);
-  sigma[4] ~ inv_gamma(1, 0.01);
+  // mu[4] ~ normal(0, 0.01);
+  // sigma[4] ~ inv_gamma(1, 0.01);
   
-  mu[6] ~ normal(0, 0.01);
-  sigma[6] ~ inv_gamma(1, 0.01);
+  // mu[6] ~ normal(0, 0.01);
+  // sigma[6] ~ inv_gamma(1, 0.01);
   
   for(i in 1:L_train) {
     beta[i] ~ normal(mu, sigma);

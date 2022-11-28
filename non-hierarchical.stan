@@ -6,7 +6,6 @@ data {
   
   int<lower=0> N_test;
   matrix[N_test, D] X_test;
-  // int<lower=0, upper=1> y_test[N_test];
 }
 
 parameters {
@@ -18,8 +17,8 @@ model {
   beta_0 ~ normal(0, 1);
   beta ~ normal(0, 1);
   beta[3] ~ normal(0, 0.01);
-  beta[4] ~ normal(0, 0.01);
-  beta[6] ~ normal(0, 0.01);
+  // beta[4] ~ normal(0, 0.01);
+  // beta[6] ~ normal(0, 0.01);
   y_train ~ bernoulli_logit(beta_0 + X_train * beta);
 }
 

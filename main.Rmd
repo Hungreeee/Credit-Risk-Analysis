@@ -13,6 +13,7 @@ library(rstan)
 library(tidyr)
 library(dplyr)
 library(ggcorrplot)
+library(gridExtra)
 library(plyr)
 library(loo)
 ```
@@ -52,7 +53,7 @@ apply(credit_risk, 2, miss)
 
 ```{r}
 ggplot(credit_risk, aes(x=Age, fill=Risk)) +
-  geom_bar()
+  geom_histogram()
 ```
 ```{r}
 ggplot(credit_risk, aes(x=Sex, fill=Risk)) +
@@ -90,7 +91,7 @@ ggplot(credit_risk, aes(x=Checking.account, fill=Risk)) +
 
 ```{r}
 ggplot(credit_risk, aes(x=Credit.amount, fill=Risk)) +
-  geom_bar()
+  geom_histogram()
 ```
 
 ```{r}
@@ -99,12 +100,21 @@ credit_risk <- credit_risk[credit_risk$Credit.amount < 10000,]
 
 ```{r}
 ggplot(credit_risk, aes(x=Credit.amount, fill=Risk)) +
-  geom_bar()
+  geom_histogram()
 ```
 
 ```{r}
 ggplot(credit_risk, aes(x=Duration, fill=Risk)) +
-  geom_bar()
+  geom_histogram()
+```
+
+```{r}
+credit_risk <- credit_risk[credit_risk$Duration < max(credit_risk$Duration),]
+```
+
+```{r}
+ggplot(credit_risk, aes(x=Duration, fill=Risk)) +
+  geom_histogram()
 ```
 
 ```{r}
@@ -137,72 +147,67 @@ credit_risk$Risk = as.numeric(factor(credit_risk$Risk)) - 1
 ggcorrplot(cor(credit_risk), lab = TRUE, lab_size = 3)
 ```
 
-```{r}
-ggplot(credit_risk, aes(x=log(Duration), y=log(Credit.amount))) +
-  geom_point() +
-  geom_smooth(method="lm")
-```
-
 
 
 ```{r}
+credit_risk <- credit_risk[sample(nrow(credit_risk)), ]
 # Standardize data
-credit_risk_hie <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk", "Purpose")], ~(scale(.) %>% as.vector))
-
-credit_risk_non_hie <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk")], ~(scale(.) %>% as.vector))
+data_non_hierarchical <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk")], ~(scale(.) %>% as.vector))
+data_hierarchical <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk", "Purpose")], ~(scale(.) %>% as.vector))
 ```
 
 ```{r}
-credit_risk_train <- head(credit_risk_non_hie, 500)
-credit_risk_test <- tail(credit_risk_non_hie, 500)
+train_size <- round(nrow(data_non_hierarchical)/2, 0)
+test_size <- nrow(data_non_hierarchical) - train_size
+train_size/test_size
+```
 
-y_train = credit_risk_train$Risk
-y_test = credit_risk_test$Risk
+```{r}
+data_train <- head(data_non_hierarchical, train_size)
+data_test <- tail(data_non_hierarchical, test_size)
 
-X_train = subset(credit_risk_train, select=-c(`Risk`)) 
-X_test = subset(credit_risk_test, select=-c(`Risk`)) 
+y_train_non_hierarchical = data_train$Risk
+y_test_non_hierarchical = data_test$Risk
 
-credit_data <- list(N_train=nrow(X_train), 
-                    D=ncol(X_train), 
-                    X_train=X_train, 
-                    y_train=y_train,
-                    N_test=nrow(X_test),
-                    X_test=X_test)
+X_train_non_hierarchical = subset(data_train, select=-c(`Risk`)) 
+X_test_non_hierarchical = subset(data_test, select=-c(`Risk`)) 
+
+credit_data <- list(N_train=nrow(X_train_non_hierarchical), 
+                    D=ncol(X_train_non_hierarchical), 
+                    X_train=X_train_non_hierarchical, 
+                    y_train=y_train_non_hierarchical,
+                    N_test=nrow(X_test_non_hierarchical),
+                    X_test=X_test_non_hierarchical)
 
 non_hierarchical_fit <- stan(file="non-hierarchical.stan", data=credit_data, chains=4, iter=2000, warmup=1000)
 ```
 
 ```{r}
-credit_risk_train <- head(credit_risk_hie, 500)
-credit_risk_test <- tail(credit_risk_hie, 500)
+data_train <- head(data_hierarchical, train_size)
+data_test <- tail(data_hierarchical, test_size)
 
-y_train = credit_risk_train$Risk
-y_test = credit_risk_test$Risk
+y_train_hierarchical = data_train$Risk
+y_test_hierarchical = data_test$Risk
 
-X_train = subset(credit_risk_train, select=-c(`Risk`, `Purpose`)) 
-X_test = subset(credit_risk_test, select=-c(`Risk`, `Purpose`)) 
+X_train_hierarchical = subset(data_train, select=-c(`Risk`, `Purpose`)) 
+X_test_hierarchical = subset(data_test, select=-c(`Risk`, `Purpose`)) 
 
-ll_train = credit_risk_train$Purpose
-ll_test = credit_risk_test$Purpose
+ll_train = data_train$Purpose
+ll_test = data_test$Purpose
 
-credit_data <- list(N_train=nrow(X_train), 
-                    D=ncol(X_train), 
+credit_data <- list(N_train=nrow(X_train_hierarchical), 
+                    D=ncol(X_train_hierarchical), 
                     L_train=length(unique(ll_train)),
                     ll_train=ll_train,
-                    X_train=X_train, 
-                    y_train=y_train,
-                    N_test=nrow(X_test),
+                    X_train=X_train_hierarchical, 
+                    y_train=y_train_hierarchical,
+                    N_test=nrow(X_test_hierarchical),
                     L_test=length(unique(ll_test)),
                     ll_test=ll_test,
-                    X_test=X_test)
+                    X_test=X_test_hierarchical)
 
 hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data, chains=4, iter=2000, warmup=1000)
 ```
-
-```{r}
-print(hierarchical_fit)
-```
-
 
 Rhat
 ```{r}
@@ -224,16 +229,61 @@ ggplot(data=as.data.frame(r_hat)) +
 
 ```
 
+```{r}
+non_hierarchical_loo <- loo(non_hierarchical_fit)
+hierarchical_loo <- loo(hierarchical_fit)
+
+ggplot() +
+  geom_point(aes(x=1:length(hierarchical_loo$diagnostics$pareto_k), y=hierarchical_loo$diagnostics$pareto_k)) +
+  scale_x_continuous(expand = c(0, 0)) + 
+  scale_y_continuous(expand = c(0, 0), limits=c(min(0, min(hierarchical_loo$diagnostics$pareto_k)), 1), n.breaks=6) +
+  geom_abline(slope=0, intercept=0.7, linetype="dashed", color="red") +
+  geom_abline(slope=0, intercept=0.5, linetype="dashed", color="red") +
+  labs(x="Data point", y="Pareto K value", title="Hierarchical model diagnostics") +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+ggplot() +
+  geom_point(aes(x=1:length(non_hierarchical_loo$diagnostics$pareto_k), y=non_hierarchical_loo$diagnostics$pareto_k)) +
+  scale_x_continuous(expand = c(0, 0)) + 
+  scale_y_continuous(expand = c(0, 0), limits=c(min(0, min(non_hierarchical_loo$diagnostics$pareto_k)), 1), n.breaks=6) +
+  geom_abline(slope=0, intercept=0.7, linetype="dashed", color="red") +
+  geom_abline(slope=0, intercept=0.5, linetype="dashed", color="red") +
+  labs(x="Data point", y="Pareto K value", title="Non hierarchical model diagnostics") +
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+```{r}
+loo_compare(non_hierarchical_loo, hierarchical_loo)
+```
+
 Posterior predictive check
 ```{r}
 # Extract fit
-ypred <- as.matrix(non_hierarchical_fit, pars="y_pred")
-ypred_hie <- as.matrix(hierarchical_fit, pars="y_pred")
+ypred_non_hierarchical <- as.matrix(non_hierarchical_fit, pars="y_pred")
+ypred_hierarchical <- as.matrix(hierarchical_fit, pars="y_pred")
 
-ppc_dens_overlay(y_test, ypred[1:50, ])
-ppc_hist(y_test, ypred[1:5, ])
+ppc_dens_overlay(y_test_non_hierarchical, ypred_non_hierarchical[1:50, ])
+ppc_hist(y_test_non_hierarchical, ypred_non_hierarchical[1:5, ])
 
-ppc_dens_overlay(y_test, ypred_hie[1:50, ])
-ppc_hist(y_test, ypred_hie[1:5, ])
+ppc_dens_overlay(y_test_hierarchical, ypred_hierarchical[1:50, ])
+ppc_hist(y_test_hierarchical, ypred_hierarchical[1:5, ])
 ```
 
+```{r}
+accuracy <- function(predictions, actual) {
+  count = 0
+  for(i in 1:ncol(predictions)) {
+    label = paste(c("y_pred[",i,"]"), collapse="")
+    predict = mean(predictions[ , label])
+    if(predict >= 0.5 && actual[i] == 1) 
+      count = count + 1 
+    else if(predict < 0.5 && actual[i] == 0) 
+      count = count + 1 
+  }
+  count / length(actual)
+}
+
+
+accuracy(ypred_non_hierarchical, y_test_non_hierarchical)
+accuracy(ypred_hierarchical, y_test_hierarchical)
+```
