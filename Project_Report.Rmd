@@ -1,0 +1,62 @@
+---
+title: "Credit Risk Analysis"
+author: "Hung Nguyen (1022029) - Hiep Nguyen (1022799)"
+date: "November, 2022"
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+---
+
+# Introduction
+
+## Motivation and problem definition
+Write something here
+
+## Research goals
+
+# Data description
+
+## Dataset details 
+
+## Data preprocessing and cleaning
+
+## Explanatory variables selection
+
+# Models description
+
+## Pooled Logistic Regression model
+
+### Prior justification
+
+### Running the model
+
+## Hierarchical Logistic Regression model
+
+### Prior justification
+
+### Running the model
+
+# Results analysis
+
+## Covergence diagnostics
+
+## Model comparison
+
+## Posterior predictive checks
+
+## Predictive performance assessment
+
+## Prior sensitivity analysis
+
+# Conclusion and potential improvements
+
+# Self-reflection
+
+# Appendices and references
+
+## Stan code appendices
+
+## References 
+

@@ -119,7 +119,8 @@ ggplot(credit_risk, aes(x=Duration, fill=Risk)) +
 
 ```{r}
 ggplot(credit_risk, aes(x=Purpose, fill=Risk)) +
-  geom_bar()
+  geom_bar() + 
+  theme(axis.text.x=element_text(angle=40, hjust=1))
 ```
 
 ```{r}
@@ -152,34 +153,34 @@ ggcorrplot(cor(credit_risk), lab = TRUE, lab_size = 3)
 ```{r}
 credit_risk <- credit_risk[sample(nrow(credit_risk)), ]
 # Standardize data
-data_non_hierarchical <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk")], ~(scale(.) %>% as.vector))
+data_pooled <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk")], ~(scale(.) %>% as.vector))
 data_hierarchical <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk", "Purpose")], ~(scale(.) %>% as.vector))
 ```
 
 ```{r}
-train_size <- round(nrow(data_non_hierarchical)/2, 0)
-test_size <- nrow(data_non_hierarchical) - train_size
+train_size <- round(nrow(data_pooled)/2, 0)
+test_size <- nrow(data_pooled) - train_size
 train_size/test_size
 ```
 
 ```{r}
-data_train <- head(data_non_hierarchical, train_size)
-data_test <- tail(data_non_hierarchical, test_size)
+data_train <- head(data_pooled, train_size)
+data_test <- tail(data_pooled, test_size)
 
-y_train_non_hierarchical = data_train$Risk
-y_test_non_hierarchical = data_test$Risk
+y_train_pooled = data_train$Risk
+y_test_pooled = data_test$Risk
 
-X_train_non_hierarchical = subset(data_train, select=-c(`Risk`)) 
-X_test_non_hierarchical = subset(data_test, select=-c(`Risk`)) 
+X_train_pooled = subset(data_train, select=-c(`Risk`)) 
+X_test_pooled = subset(data_test, select=-c(`Risk`)) 
 
-credit_data <- list(N_train=nrow(X_train_non_hierarchical), 
-                    D=ncol(X_train_non_hierarchical), 
-                    X_train=X_train_non_hierarchical, 
-                    y_train=y_train_non_hierarchical,
-                    N_test=nrow(X_test_non_hierarchical),
-                    X_test=X_test_non_hierarchical)
+credit_data <- list(N_train=nrow(X_train_pooled), 
+                    D=ncol(X_train_pooled), 
+                    X_train=X_train_pooled, 
+                    y_train=y_train_pooled,
+                    N_test=nrow(X_test_pooled),
+                    X_test=X_test_pooled)
 
-non_hierarchical_fit <- stan(file="non-hierarchical.stan", data=credit_data, chains=4, iter=2000, warmup=1000)
+pooled_fit <- stan(file="pooled.stan", data=credit_data, chains=4, iter=2000, warmup=1000)
 ```
 
 ```{r}
@@ -211,13 +212,13 @@ hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data, chains=4, i
 
 Rhat
 ```{r}
-r_hat = summary(non_hierarchical_fit)$summary[,"Rhat"]
+r_hat = summary(pooled_fit)$summary[,"Rhat"]
 ggplot(data=as.data.frame(r_hat)) +
   geom_histogram(aes(x=`r_hat`))
 ```
 
 ```{r}
-mcmc_neff(neff_ratio(non_hierarchical_fit))
+mcmc_neff(neff_ratio(pooled_fit))
 
 mcmc_neff(neff_ratio(hierarchical_fit))
 ```
@@ -226,11 +227,10 @@ mcmc_neff(neff_ratio(hierarchical_fit))
 r_hat = summary(hierarchical_fit)$summary[,"Rhat"]
 ggplot(data=as.data.frame(r_hat)) +
   geom_histogram(aes(x=`r_hat`)) 
-
 ```
 
 ```{r}
-non_hierarchical_loo <- loo(non_hierarchical_fit)
+pooled_loo <- loo(pooled_fit)
 hierarchical_loo <- loo(hierarchical_fit)
 
 ggplot() +
@@ -243,9 +243,9 @@ ggplot() +
   theme(plot.title = element_text(hjust = 0.5)) 
 
 ggplot() +
-  geom_point(aes(x=1:length(non_hierarchical_loo$diagnostics$pareto_k), y=non_hierarchical_loo$diagnostics$pareto_k)) +
+  geom_point(aes(x=1:length(pooled_loo$diagnostics$pareto_k), y=pooled_loo$diagnostics$pareto_k)) +
   scale_x_continuous(expand = c(0, 0)) + 
-  scale_y_continuous(expand = c(0, 0), limits=c(min(0, min(non_hierarchical_loo$diagnostics$pareto_k)), 1), n.breaks=6) +
+  scale_y_continuous(expand = c(0, 0), limits=c(min(0, min(pooled_loo$diagnostics$pareto_k)), 1), n.breaks=6) +
   geom_abline(slope=0, intercept=0.7, linetype="dashed", color="red") +
   geom_abline(slope=0, intercept=0.5, linetype="dashed", color="red") +
   labs(x="Data point", y="Pareto K value", title="Non hierarchical model diagnostics") +
@@ -253,17 +253,17 @@ ggplot() +
 ```
 
 ```{r}
-loo_compare(non_hierarchical_loo, hierarchical_loo)
+loo_compare(pooled_loo, hierarchical_loo)
 ```
 
 Posterior predictive check
 ```{r}
 # Extract fit
-ypred_non_hierarchical <- as.matrix(non_hierarchical_fit, pars="y_pred")
+ypred_pooled <- as.matrix(pooled_fit, pars="y_pred")
 ypred_hierarchical <- as.matrix(hierarchical_fit, pars="y_pred")
 
-ppc_dens_overlay(y_test_non_hierarchical, ypred_non_hierarchical[1:50, ])
-ppc_hist(y_test_non_hierarchical, ypred_non_hierarchical[1:5, ])
+ppc_dens_overlay(y_test_pooled, ypred_pooled[1:50, ])
+ppc_hist(y_test_pooled, ypred_pooled[1:5, ])
 
 ppc_dens_overlay(y_test_hierarchical, ypred_hierarchical[1:50, ])
 ppc_hist(y_test_hierarchical, ypred_hierarchical[1:5, ])
@@ -290,17 +290,17 @@ confusion_matrix <- function(predictions, actual) {
   matrix(c(true_pos_count, false_pos_count, false_neg_count, true_neg_count), nrow=2, dimnames=list(c("Predicted True", "Predicted False"), c("Actual True", "Actual False")))
 }
 
-non_hierarchical_conf_mat <- confusion_matrix(ypred_non_hierarchical, y_test_non_hierarchical)
+pooled_conf_mat <- confusion_matrix(ypred_pooled, y_test_pooled)
 hierarchical_conf_mat <- confusion_matrix(ypred_hierarchical, y_test_hierarchical)
 
-non_hierarchical_conf_mat
+pooled_conf_mat
 hierarchical_conf_mat
 ```
 
 Accuracy
 ```{r}
-(non_hierarchical_conf_mat[1,1] + non_hierarchical_conf_mat[2, 2]) / 
-  (non_hierarchical_conf_mat[1,1] + non_hierarchical_conf_mat[2, 2] + non_hierarchical_conf_mat[1,2] + non_hierarchical_conf_mat[2, 1])
+(pooled_conf_mat[1,1] + pooled_conf_mat[2, 2]) / 
+  (pooled_conf_mat[1,1] + pooled_conf_mat[2, 2] + pooled_conf_mat[1,2] + pooled_conf_mat[2, 1])
 
 (hierarchical_conf_mat[1,1] + hierarchical_conf_mat[2, 2]) / 
   (hierarchical_conf_mat[1,1] + hierarchical_conf_mat[2, 2] + hierarchical_conf_mat[1,2] + hierarchical_conf_mat[2, 1])
@@ -308,14 +308,22 @@ Accuracy
 
 False negative
 ```{r}
-non_hierarchical_conf_mat[2,1]/ 
-  (non_hierarchical_conf_mat[1, 1] + non_hierarchical_conf_mat[2,1])
+pooled_conf_mat[2,1]/ 
+  (pooled_conf_mat[1, 1] + pooled_conf_mat[2,1])
 
 hierarchical_conf_mat[2,1]/ 
   (hierarchical_conf_mat[1, 1] + hierarchical_conf_mat[2,1])
 ```
 
+```{r}
+pooled_draws <- as_draws_df(pooled_fit)
+hist(pooled_draws$`beta_0`)
+hist(pooled_draws$`beta[2]`)
 
+hierarchical_draws <- as_draws_df(hierarchical_fit)
+hist(hierarchical_draws$`beta_0[1]`)
+hist(hierarchical_draws$`beta[2,1]`)
+```
 
 
 
