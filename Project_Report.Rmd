@@ -12,7 +12,7 @@ output:
 # Introduction
 
 ## Motivation and problem definition
-Hiep and Hung 
+Hiep and Hung and Khanh
 
 ## Research goals
 
