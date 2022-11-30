@@ -10,12 +10,14 @@ library(ggplot2)
 library(posterior)
 library(bayesplot)
 library(rstan)
+library(ggpubr)
 library(tidyr)
 library(dplyr)
 library(ggcorrplot)
 library(gridExtra)
 library(plyr)
 library(loo)
+library(invgamma)
 ```
 
 ```{r}
@@ -173,14 +175,14 @@ y_test_pooled = data_test$Risk
 X_train_pooled = subset(data_train, select=-c(`Risk`)) 
 X_test_pooled = subset(data_test, select=-c(`Risk`)) 
 
-credit_data <- list(N_train=nrow(X_train_pooled), 
-                    D=ncol(X_train_pooled), 
-                    X_train=X_train_pooled, 
-                    y_train=y_train_pooled,
-                    N_test=nrow(X_test_pooled),
-                    X_test=X_test_pooled)
+credit_data_pooled <- list(N_train=nrow(X_train_pooled), 
+                            D=ncol(X_train_pooled), 
+                            X_train=X_train_pooled, 
+                            y_train=y_train_pooled,
+                            N_test=nrow(X_test_pooled),
+                            X_test=X_test_pooled)
 
-pooled_fit <- stan(file="pooled.stan", data=credit_data, chains=4, iter=2000, warmup=1000)
+pooled_fit <- stan(file="pooled.stan", data=credit_data_pooled, chains=4, iter=2000, warmup=1000)
 ```
 
 ```{r}
@@ -196,18 +198,18 @@ X_test_hierarchical = subset(data_test, select=-c(`Risk`, `Purpose`))
 ll_train = data_train$Purpose
 ll_test = data_test$Purpose
 
-credit_data <- list(N_train=nrow(X_train_hierarchical), 
-                    D=ncol(X_train_hierarchical), 
-                    L_train=length(unique(ll_train)),
-                    ll_train=ll_train,
-                    X_train=X_train_hierarchical, 
-                    y_train=y_train_hierarchical,
-                    N_test=nrow(X_test_hierarchical),
-                    L_test=length(unique(ll_test)),
-                    ll_test=ll_test,
-                    X_test=X_test_hierarchical)
+credit_data_hierarchical <- list(N_train=nrow(X_train_hierarchical), 
+                                  D=ncol(X_train_hierarchical), 
+                                  L_train=length(unique(ll_train)),
+                                  ll_train=ll_train,
+                                  X_train=X_train_hierarchical, 
+                                  y_train=y_train_hierarchical,
+                                  N_test=nrow(X_test_hierarchical),
+                                  L_test=length(unique(ll_test)),
+                                  ll_test=ll_test,
+                                  X_test=X_test_hierarchical)
 
-hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data, chains=4, iter=2000, warmup=1000)
+hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data_hierarchical, chains=4, iter=2000, warmup=1000)
 ```
 
 Rhat
@@ -315,19 +317,95 @@ hierarchical_conf_mat[2,1]/
   (hierarchical_conf_mat[1, 1] + hierarchical_conf_mat[2,1])
 ```
 
-```{r}
-pooled_draws <- as_draws_df(pooled_fit)
-hist(pooled_draws$`beta_0`)
-hist(pooled_draws$`beta[2]`)
+# prior check
 
-hierarchical_draws <- as_draws_df(hierarchical_fit)
-hist(hierarchical_draws$`beta_0[1]`)
-hist(hierarchical_draws$`beta[2,1]`)
+```{r}
+prior_pooled_fit <- stan(file="prior_check_pooled.stan", data=credit_data_pooled, chains=4, iter=2000, warmup=1000)
 ```
 
+```{r}
+prior_hierarchical_fit <- stan(file="prior_check_hierarchical.stan", data=credit_data_hierarchical, chains=4, iter=2000, warmup=1000)
+```
 
+```{r}
+current_pooled_draws <- as_draws_df(pooled_fit)
+prior_pooled_draws <- as_draws_df(prior_pooled_fit)
 
+current_pooled_posterior <- as_tibble(current_pooled_draws$`beta_0`)
+prior_pooled_posterior <- as_tibble(prior_pooled_draws$`beta_0`)
 
+scale=seq(-5, 5.5, by=0.1)
+       
+current_pooled_prior <- data_frame(x=scale, y=dnorm(scale, mean=0, sd=1))
+tested_pooled_prior <- data_frame(x=scale, y=dnorm(scale, mean=2, sd=0.3))
+
+pooled_prior_comp <- ggplot() +
+  geom_line(data=current_pooled_prior, aes(x=x, y=y)) +
+  geom_area(data=current_pooled_prior, aes(x=x, y=y, fill="Original prior"), alpha=0.5) +
+  geom_line(data=tested_pooled_prior, aes(x=x, y=y)) +
+  geom_area(data=tested_pooled_prior, aes(x=x, y=y, fill="Alternative prior"), alpha=0.5) +
+  scale_fill_manual(name="Priors", breaks=c("Original prior", "Alternative prior"), values=c("lightblue", "dodgerblue3")) +
+  labs(x="beta_0", y="density") 
+  
+
+pooled_posterior_comp <- ggplot() +
+  geom_density(data=current_pooled_posterior, aes(x=value, fill="Original prior"), alpha=0.5) +
+  geom_density(data=prior_pooled_posterior, aes(x=value, fill="Alternative prior"), alpha=0.5) +
+  scale_fill_manual(name="Priors", breaks=c("Original prior", "Alternative prior"), values=c("lightblue", "dodgerblue3")) +
+  labs(x="beta_0 (Posterior)", y="density") 
+
+ggarrange(pooled_prior_comp, pooled_posterior_comp, ncol=2, common.legend=TRUE)
+```
+
+```{r}
+prior_pooled_loo <- loo(prior_pooled_fit)
+loo_compare(pooled_loo, prior_pooled_loo)
+```
+
+```{r, warning=FALSE}
+current_hierarchical_draws <- as_draws_df(hierarchical_fit)
+prior_hierarchical_draws <- as_draws_df(prior_hierarchical_fit)
+
+current_hierarchical_posterior <- as_tibble(current_hierarchical_draws$`beta_0[1]`)
+prior_hierarchical_posterior <- as_tibble(prior_hierarchical_draws$`beta_0[1]`)
+
+scale <- seq(-5, 5.5, by=0.1)
+       
+current_hierarchical_prior_mu <- data_frame(x=scale, y=dnorm(scale, mean=0, sd=1))
+tested_hierarchical_prior_mu <- data_frame(x=scale, y=dnorm(scale, mean=2, sd=0.3))
+
+current_hierarchical_prior_sigma <- data_frame(x=scale, y=dnorm(scale, mean=0, sd=1))
+tested_hierarchical_prior_sigma <- data_frame(x=scale, y=dnorm(scale, mean=2, sd=0.5))
+
+hierarchical_prior_comp_mu <- ggplot() +
+  geom_line(data=current_hierarchical_prior_mu, aes(x=x, y=y)) +
+  geom_area(data=current_hierarchical_prior_mu, aes(x=x, y=y, fill="Original prior"), alpha=0.5) +
+  geom_line(data=tested_hierarchical_prior_mu, aes(x=x, y=y)) +
+  geom_area(data=tested_hierarchical_prior_mu, aes(x=x, y=y, fill="Alternative prior"), alpha=0.5) +
+  scale_fill_manual(name="Priors", breaks=c("Original prior", "Alternative prior"), values=c("lightblue", "dodgerblue3")) +
+  labs(x="mu_0", y="density") 
+
+scale <- seq(0, 6.5, by=0.1)
+
+current_hierarchical_prior_sigma <- data_frame(x=scale, y=dinvgamma(scale, shape=0.5, rate=1))
+tested_hierarchical_prior_sigma <- data_frame(x=scale, y=dinvgamma(scale, shape=1, rate=0.1))
+
+hierarchical_prior_comp_sigma <- ggplot() +
+  geom_line(data=current_hierarchical_prior_sigma, aes(x=x, y=y)) +
+  geom_area(data=current_hierarchical_prior_sigma, aes(x=x, y=y, fill="Original prior"), alpha=0.5) + 
+  geom_line(data=tested_hierarchical_prior_sigma, aes(x=x, y=y)) +
+  geom_area(data=tested_hierarchical_prior_sigma, aes(x=x, y=y, fill="Alternative prior"), alpha=0.5) +
+  scale_fill_manual(name="Priors", breaks=c("Original prior", "Alternative prior"), values=c("lightblue", "dodgerblue3")) +
+  labs(x="sigma_0", y="density") 
+
+posterior_comp <- ggplot() +
+  geom_density(data=current_hierarchical_posterior, aes(x=value, fill="Original prior"), alpha=0.5) +
+  geom_density(data=prior_hierarchical_posterior, aes(x=value, fill="Alternative prior"), alpha=0.5) +
+  scale_fill_manual(name="Priors", breaks=c("Original prior", "Alternative prior"), values=c("lightblue", "dodgerblue3")) +
+  labs(x="beta_0_1 (Posterior)", y="density") 
+
+ggarrange(hierarchical_prior_comp_mu, hierarchical_prior_comp_sigma, posterior_comp, ncol=3, common.legend=TRUE)
+```
 
 
 
