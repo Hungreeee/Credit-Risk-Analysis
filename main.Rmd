@@ -106,7 +106,7 @@ credit_plot <- ggplot(credit_risk, aes(x=Credit.amount, fill=Risk)) +
 ```
 
 ```{r}
-credit_risk <- credit_risk[credit_risk$Credit.amount < 10000,]
+credit_risk <- credit_risk[credit_risk$Credit.amount < 13000,]
 ```
 
 ```{r}

@@ -1,14 +1,14 @@
 data {
   int<lower=0> N_train; // Observation
-  int<lower=0> D; // Columns
+  int<lower=0> K; // Columns
   int<lower=0> L_train;
-  matrix[N_train, D] X_train; 
+  matrix[N_train, K] X_train; 
   int<lower=0, upper=L_train> ll_train[N_train];
   int<lower=0, upper=1> y_train[N_train];
   
   int<lower=0> N_test;
   int<lower=0> L_test;
-  matrix[N_test, D] X_test; 
+  matrix[N_test, K] X_test; 
   int<lower=0, upper=L_test> ll_test[N_test];
 }
 
@@ -17,9 +17,9 @@ parameters {
   real<lower=0> sigma_0;
   real beta_0[L_train];
   
-  real mu[D];
-  real<lower=0> sigma[D];
-  vector[D] beta[L_train];
+  real mu[K];
+  real<lower=0> sigma[K];
+  vector[K] beta[L_train];
 }
 
 model {

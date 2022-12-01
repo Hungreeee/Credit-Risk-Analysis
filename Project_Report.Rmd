@@ -7,7 +7,11 @@ output:
     toc: true
     toc_depth: 2
     number_sections: true
+urlcolor: blue
+linkcolor: blue
 ---
+
+\newpage
 
 ```{r, warning=FALSE, results="hide", message=FALSE, echo=FALSE}
 library(ggplot2)
@@ -30,26 +34,41 @@ credit_risk <- subset(credit_risk, select=-c(`X`))
 ```
 
 # Introduction
+
 This project is part of the Aalto University Bayesian Data Analysis 2022 Course. 
 
-One of the most important services of banks that attract their customers is providing credit. When lenders offer home loans, auto loans, or business loans, there is an inherent risk that borrowers will default on their payments, this is termed as Credit Risk. Credit risk is universally known as the possibility of a loss for a lender due to a borrower’s failure to repay a loan. When the credit risk is mishandled by the lenders, the consequences can be catastrophic. The collapse of the housing market in 2008 and the ensuing recession were one of the best illustration of how severe the outcome can be: in just a few months, the banking sector nearly collapsed due to a significant overexposure to credit defaults. Therefore, it is essential for the banks to determine the lenders' ability to meet debt obligations, and this process is known as Credit Risk Analysis
+One of the most important services of banks that attract their customers is providing credits. However, when lenders offer home loans, auto loans, or business loans, there is an inherent risk that borrowers will default on their payments, and this is termed as *credit risk*. Credit risk is universally known as the possibility of a loss for a lender due to a borrower’s failure to repay a loan. When the credit risk is mishandled by the lenders, the consequences can be catastrophic. The collapse of the housing market in 2008 and the ensuing recession were one of the best illustration of how severe the outcome can be: in just a few months, the banking sector nearly collapsed due to a significant overexposure to credit defaults. Therefore, it is essential to determine the borrowers' ability to meet debt obligations as well as the risks involved, and this process is known as credit risk analysis. 
 
-## Motivation and problem definition
-For our project, we choose our topic to be Credit Risk Analysis due to its meaningfulness, significance, and the fact that there has not been any previous Bayesian data analysis performed on the data set. Our goal is to use Bayesian data analysis method to identify the riskiness of a loan and classify them into good loan and bad loan. 
+The reason this topic is chosen is because of its meaningfulness and significance to the credit market, and the fact that there has been limited Bayesian data analysis project performed on the topic. Our goal is to use Logistic Regression to identify the riskiness of a loan by classifying them into good and bad loan. A pooled and hierarchical models will be applied to this problem, and through results analysis, we can compare and choose a stronger-performed model for this problem.
 
-The report consists of the following parts: introduction, data description, models, results, discussion, conclusion, and appendix. First, we formulate the problem and show how we handle the data through pre-processing and feature selection process. Then in the Models section, we describe the two Stan models used and justify their likelihood and justification of their choice. In the Result section, we perform convergence analysis, posterior predictive checks, predictive performance assessment, model selection, and prior sensitivity analysis. In the Discussion and Conclusion section, we will discuss issues and potential improvements for our models, as well as some interesting insights that we have learned while doing the project. The Appendix part will include all the Stan model code. The complete model and R code can also be found at https://github.com/Hungreeee/Credit-Risk-Analysis 
-
-
-## Research goals
-Our goal is to use Bayesian data analysis method to identify the riskiness of a loan and classify them into good loan and bad loan using Stan and R programming language. Non-hierarchical and hierarchical models will be applied to this problem, and through  convergence analysis, posterior predictive checks, predictive performance assessment, and prior sensitivity analysis, we can choose the better methods for this problem and also know how we can further improve our Bayesian-approach analysis for this problem. 
+The report consists of the following parts: Introduction, Data description, Models, Results, Discussion, Conclusion, and Appendices. First, we formulate the problem and show how we handle the data through pre-processing and feature selection process. In the Models section, we describe the two Stan models used and justify their likelihood and justification of their choice. In the Result section, we perform convergence analysis, posterior predictive checks, predictive performance assessment, model selection, and prior sensitivity analysis. Finally, in the Discussion and Conclusion section, we will discuss issues and potential improvements for our models, as well as some interesting insights that we have learned while doing the project. The Appendix part will include all the Stan models being used in this report. 
 
 # Data description
-This data set is used in a Kaggle competition - Predicting Credit Risk. The original data set contains 1000 data points with 20 categorical/symbolic attributes prepared by Prof. Hofmann. In this data set, each entry represents a person who takes a credit by a bank, and each person is classified as good or bad credit risks according to the set of attributes. The data set can be found at: https://www.kaggle.com/datasets/kabure/german-credit-data-with-risk
+The data set is obtained through Kaggle. It contains 1000 data points with 20 categorical attributes created by Professor Hofmann. In this data set, each entry represents a person taking a credit by a bank, and each person is classified as good or bad credit risks according to the set of attributes. The full data set can be found [here](https://www.kaggle.com/datasets/kabure/german-credit-data-with-risk).
 
-## Analysis problem and existing analysis
-The goal of our project is to build a non-hierarchical and a hierarchical model to identify the riskiness of a loan and classify them into good loan and bad loan. We then compare these two models to find out which model is better in predicting the riskiness of a loan. 
+The data consists of 10 columns, 9 explanatory variables and 1 target variable, defined as follows:
 
-There are around 80 other people who also tried to solve this problem on Kaggle. After some research on how the other competitors have tried to solve this, we see that logistic regression is a common approach for this problem. However, there is no solution with a complete Bayesian approach, and that is where our model differ from the work of other Kagglers. 
+Explanatory variables:
+
+- Age (numerical): The age of the subject.
+- Sex (textual/categorical): The gender of the subject. This includes "`male`" and "`female`".
+- Job (numerical/categorical): The level of employment of the subject. This includes `0` - unskilled and non-resident, `1` - unskilled and resident, `2` - skilled, `3` - highly skilled.
+- Housing (textual/categorical): The type of housing of the subject. This includes "`own`", "`rent`" and "`free`".
+- Saving.accounts (textual/categorical): The level of wealth of subject's saving account. This includes "`little`", "`moderate`", "`quite rich`", "`rich``".
+- Checking.account (textual/categorical): The level of wealth of subject's checking account. This includes "`little`", "`moderate`", "`quite rich`", "`rich``".
+- Credit.amount (numerical): The amount of credit of the subject's loan.
+- Duration (numerical): The contracted loan due time (in month).
+- Purpose (textual/categorical): The purpose of the subject's loan.
+
+Target variable:
+
+- Risk (textual/categorical): The fact that the subject has defaulted (not repaying the loan). This includes `good` - good loan (the subject has repaid on time), `bad` - bad loan (the subject has defaulted).
+
+The data set have missing data: the columns Saving.accounts and Checking account both contain `NA` values (missing variables), which takes $18.3$% and $39.4$% of the total observations, respectively.
+```{r}
+isNA <- function(x){sum(is.na(x))/length(x)*100}
+apply(credit_risk, 2, isNA)
+```
 
 ## Data preprocessing and cleaning
 We can explore the data by plotting histograms for the features corresponding with their target values. The histograms can provide insights regarding the correlation between the explanatory variables (features) with the target variables Risk.
@@ -110,19 +129,19 @@ purpose_plot
 ```
 There are some issues that can be observed from the histograms:
 
-- The variables Saving.accounts and Checking.accounts have `NA` values.
-- The continuous variables Credit.amount and Duration have strong outliers, as their histograms clearly show a few larger values seperating themselves from the rest of the population.
-- The discrete variables Saving.accounts and Purpose have a high sparse level. Their histograms show that the data was categorized into too many groups while some groups are relatively low in population.
+- The variables Saving.accounts and Checking.account have `NA` values (which is also suggested at the Data set description section above).
+- The continuous variables Credit.amount and Duration have great outliers, as their histograms clearly show a few significantly larger values clearly separating themselves from the rest of the population.
+- The discrete variables Saving.accounts and Purpose have a high scatter level. That is, their histograms show that the data was categorized into too many groups while some groups are relatively low in population.
 
 We have provide some fix to these issues:
 
 - In order to resolve the high `NA` values presented in two of the features, we decided to impute the missing data with the mode (most frequent value) of data, which, from the plots, is the "`little`" value. Mode imputation is an popular method for filling missing data of categorical data, especially when the data is unbalanced and highly skewed towards the most frequent value like Saving.accounts and Checking.accounts. 
 
-- To resolve the outliers presented in the Credit.amount and Duration, because they are very little in population, we can just remove them from the data. For Credit.amount, we remove all data points containing values larger than 15000; for Duration, we remove all data points with values larger than 65.
+- To resolve the outliers presented in the Credit.amount and Duration, because they are very little in population, we can just remove them from the data. For Credit.amount, we remove all data points containing values larger than 13000; for Duration, the outlier is just a single data point with value equals to 72 so we just delete it from the data.
 
-- To resolve the high sparse level presented in Saving.accounts and Purpose, a possible solution could be merging the less populated groups with the relevant counterparts. With Saving.accounts, we merge the `rich` and `quite rich` values with each other; with Purpose, we merge `domestic appliances` with `funiture/equipment`, `repairs` with `vacation/others`. This fix will help to data to be less scattered and make the models constructed later to predict stronger results.
+- To resolve the high sparse level presented in Saving.accounts and Purpose, a possible solution could be merging the less populated groups with the relevant counterparts. With Saving.accounts, we merge the "`rich`" and "`quite rich`" values into "`rich`"; with Purpose, we merge `domestic appliances` with `funiture/equipment` into "`funiture/equipment`", `repairs` with `vacation/others` into "`others`". This fix will help to data to be less scattered and make the models constructed later to predict more robust results.
 
-One additional, but important, step that could be made to our data is standardization. The input consists of different variables (categorical, numerical, textual) with distinct scales so standardizing them is vital for the models to perform better. In addition, standardizing can facilitate the process of prior choosing for the features, since all variables are on the same scale. To standardize, we transform each explanatory variables to numerical, then scale them so that their mean $=0$ and standard deviation $=1$.
+One additional, but important, step that could be made to our data is standardization. The input consists of different variables (categorical, numerical, textual) with distinct scales so standardizing them is vital for the models to perform better. In addition, standardizing can facilitate the process of prior choosing for the features, since all variables are on the same scale. To standardize, we transform all variables (including target) to numerical. Then, we scale the explanatory variables them so that their mean $=0$ and standard deviation $=1$. 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
 # Impute NA
@@ -149,7 +168,7 @@ credit_risk$Saving.accounts <- plyr::mapvalues(credit_risk$Saving.accounts,
                                          to = c("little","moderate","rich","rich"))
 
 # Remove outliers
-credit_risk <- credit_risk[credit_risk$Credit.amount < 15000,]
+credit_risk <- credit_risk[credit_risk$Credit.amount < 13000,]
 credit_risk <- credit_risk[credit_risk$Duration < max(credit_risk$Duration),]
 
 
@@ -177,30 +196,100 @@ We can select the final explanatory variables for the models by using a correlat
 ggcorrplot(cor(credit_risk), lab = TRUE, lab_size = 3)
 ```
 
-From the correlation plot, we observe no correlation greater than $0.9$ so no significant multicollinearity is presented. However, it is noticable that the Housing variable shows the lowest correlation with the target variable (only $-0.02$), indicating that it is quite insignificant to the sampling process. This should be noted, as later on, some actions will be taken to to diminish its effect on the results. 
+From the correlation plot, we observe no correlation greater than $0.9$ between the features so no significant multicollinearity is presented. However, it is noticable that the Housing variable shows the lowest correlation with the target variable (only $-0.02$), indicating that it is quite insignificant to the sampling process. This should be noted, as later on, some actions will be taken to to diminish its effect on the results. 
 
-In conclusion, the explanatory variables are chosen for the pooled are Age, Sex, Job, Housing, Saving.accounts, Checking.account, Duration, Purpose, with Housing being the less correlated with the target values. For the hierarchical model, however, Purpose will instead be used as a levels grouping variable and will be excluded from the explanatory variables. 
+In conclusion, the explanatory variables are chosen for the pooled are Age, Sex, Job, Housing, Saving.accounts, Checking.account, Duration, Purpose, with Housing being the less correlated with the target values. For the hierarchical model, however, Purpose will instead be used as a levels grouping variable and will be excluded from the explanatory variables.
+
 # Models description
 
 ## Pooled Logistic Regression model
-The Logistic Regression model is used to classify the risk $y_i$ in lending a loan based on the observation $x_i$. Its predictor $p$ is parameterized with an intercept $\beta_0$ and explanatory coefficients $\beta_1,\beta_2,..., \beta_k$ as follows:
-
-$$
-p = \frac{e^{\beta_0+\beta_1 x_1+...+\beta_k x_k}}{1-e^{\beta_0+\beta_1 x_1+...+\beta_k x_k}}, \text{ or } p= logit^{-1}(\beta_0+\beta_1 x_1+...+\beta_k x_k)
-$$
+The Logistic Regression model is used to classify the risk $y$ in lending a loan based on the observation $x$. Its predictor $p$ is parameterized with an intercept $\beta_0$ and explanatory coefficients $\beta_1,\beta_2,..., \beta_k$ as follows:
+\[
+\begin{aligned}
+p &= \frac {e^{\beta_0+\beta_1 x_{n,1}+...+\beta_k x_{n,k}}} {1-e^{\beta_0+\beta_1 x_{n,1}+...+\beta_k x_{n,k}}} \\
+&= logit^{-1}(\beta_0+\beta_1 x_{n,1}+...+\beta_k x_{n,k})
+\end{aligned}
+\]
 The target variable $y$ for the observations $x$ follows the distribution:
 $$
-y \sim Bernoulli(p)=Bernoulli(logit^{-1}(\beta_0+\beta_1 x_1+...+\beta_k x_k))
+y_n \sim Bernoulli(p)=Bernoulli(logit^{-1}(\beta_0+\beta_1 x_{n,1}+...+\beta_k x_{n,k}))
 $$
+where $\beta_0$ is the intercept and each $\beta_1,\beta_2,..., \beta_k$ models the regression coefficient for each feature.
 
 ### Prior justification
+Because of the standardized data, we may assume a commonly-used generic weakly informative priors for the explanatory coefficients:
+$$
+\beta_0, \beta_1,...,\beta_k \sim normal(0, 1)
+$$
+A Normal distribution with location parameter of 0 expresses our little knowledge of whether a change in input variables can affect the predicted target, while a standard deviation of 1 widens the shape of the distribution so that it, softly concentrates below the scale, which is weakly informative enough for our standardized data.
 
+However, as noted, for the potential irrelevant variable Housing, which corresponds to $\beta_3$, we assume an informative prior:
+$$
+\beta_3 \sim normal(0, 0.01)
+$$
+This informative prior serves as an powerful *regularization prior* scaling the insignificant coefficient $\beta_3$ to nearly zero, but not completely disregard them from the model, therefore shrinking its effect on the results. This effect shrinkage idea is to justify model selection, which is obtain from [Paul et al. (2014)](#references). 
 
 ### Running the model
+Before running, the input data was separated into training data and testing data with equal proportions (half) of the data. 
+```{r}
+train_size <- round(nrow(data_pooled)/2, 0)
+test_size <- nrow(data_pooled) - train_size
+cat("Train size:", train_size, "/ Test size:", test_size)
+```
+
+The model is then run with 4 chains, 2000 iterations and 1000 warm-ups. 
+
+```{r, message=FALSE, warning=FALSE, results='hide'}
+data_train <- head(data_pooled, train_size)
+data_test <- tail(data_pooled, test_size)
+
+y_train_pooled = data_train$Risk
+y_test_pooled = data_test$Risk
+
+X_train_pooled = subset(data_train, select=-c(`Risk`)) 
+X_test_pooled = subset(data_test, select=-c(`Risk`)) 
+
+credit_data_pooled <- list(N_train=nrow(X_train_pooled), 
+                            D=ncol(X_train_pooled), 
+                            X_train=X_train_pooled, 
+                            y_train=y_train_pooled,
+                            N_test=nrow(X_test_pooled),
+                            X_test=X_test_pooled)
+
+pooled_fit <- stan(file="pooled.stan", data=credit_data_pooled, 
+                   chains=4, iter=2000, warmup=1000)
+```
 
 ## Hierarchical Logistic Regression model
+The hierarchical model, though resembles the pooled model in using Logistic Regression, is a relatively more complex model. As mentioned in the Explanatory variables analysis section, the data is categorized into $L$ groups using the categorical data in the Purpose variable. The coefficients $\beta_0, \beta_1,...,\beta_k$ is then sampled separately for each of $L$ groups using their own *hyper-parameters* $\mu$ and $\sigma$. The structuring of the model can be given as below:
+
+```{r echo=FALSE, out.width='50%', fig.align='center'}
+knitr::include_graphics('hierarchical-structure.png')
+```
+
+With each of $L$ groups having their own $\beta_0, \beta_1,...,\beta_k$ sampled separately, we can build a Logistic Regression equation for the target variable:
+\[
+\begin{gathered}
+y_n \sim Bernoulli(logit^{-1}(\beta_{0,L(n)}+\beta_{1,L(n)} x_{n,1}+...+\beta_{k,L(n)} x_{n,k})),\\ \text{ with }L(n) \text{ being the group of the }n^{th} \text{ data}\\
+\end{gathered}
+\]
 
 ### Prior justification
+We can estimate the coefficients $\beta_{0,L(n)}, \beta_{1,L(n)}, ..., \beta_{k,L(n)}$ using a Normal prior with the hyper-parameters $\mu$ and $\sigma$:
+$$
+\beta_{i,L(n)} \sim normal(\mu_i, \sigma_i), \text{ with }i=1:k
+$$
+For the hyper-parameter $\mu_i$, we assume a the same generic weakly-informative prior:
+$$
+\mu_i \sim normal(0, 1)
+$$
+Note that because of the standardization step, this prior is considered to be weakly-informative enough to not creating biases. We have explained the choice of this prior above in the pooled model.
+
+For the hyper-parameter $\sigma$, we assume a weakly-informative inverse-gamma prior:
+$$
+\sigma_i \sim \Gamma^{-1}(0.5, 1) 
+$$
+In hierarchical modelling, the inverse-gamma family is a common prior for hyper variance estimating. The shape of this distribution is 
 
 ### Running the model
 
@@ -226,3 +315,4 @@ $$
 
 ## References 
 
+Hahn, Paul & Carvalho, Carlos. (2014). Decoupling Shrinkage and Selection in Bayesian Linear Models: A Posterior Summary Perspective. Journal of the American Statistical Association. 110. 10.1080/01621459.2014.993077. 

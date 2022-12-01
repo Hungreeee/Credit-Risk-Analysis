@@ -1,16 +1,16 @@
 data {
   int<lower=0> N_train; // Observation
-  int<lower=0> D; // Columns
-  matrix[N_train, D] X_train;
+  int<lower=0> K; // Columns
+  matrix[N_train, K] X_train;
   int<lower=0, upper=1> y_train[N_train];
   
   int<lower=0> N_test;
-  matrix[N_test, D] X_test;
+  matrix[N_test, K] X_test;
 }
 
 parameters {
   real beta_0;
-  vector[D] beta;
+  vector[K] beta;
 }
 
 model {
