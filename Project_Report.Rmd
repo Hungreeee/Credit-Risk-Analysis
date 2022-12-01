@@ -5,14 +5,14 @@ date: "November, 2022"
 output: 
   pdf_document:
     toc: true
-    toc_depth: 2
+    toc_depth: 2s
     number_sections: true
 ---
 
 # Introduction
 
 ## Motivation and problem definition
-Hiep and Hung and Khanh
+This project is part of the Aalto University Bayesian Data Analysis 2022 Course. 
 
 ## Research goals
 
