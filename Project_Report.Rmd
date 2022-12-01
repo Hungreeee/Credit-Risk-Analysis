@@ -9,6 +9,26 @@ output:
     number_sections: true
 ---
 
+```{r, warning=FALSE, results="hide", message=FALSE, echo=FALSE}
+library(ggplot2)
+library(posterior)
+library(bayesplot)
+library(rstan)
+library(ggpubr)
+library(tidyr)
+library(dplyr)
+library(ggcorrplot)
+library(gridExtra)
+library(plyr)
+library(loo)
+library(invgamma)
+
+set.seed(123)
+credit_risk <- read.csv(file="german_credit_data.csv")
+summary(credit_risk)
+credit_risk <- subset(credit_risk, select=-c(`X`))
+```
+
 # Introduction
 This project is part of the Aalto University Bayesian Data Analysis 2022 Course. 
 
@@ -32,15 +52,149 @@ The goal of our project is to build a non-hierarchical and a hierarchical model 
 There are around 80 other people who also tried to solve this problem on Kaggle. After some research on how the other competitors have tried to solve this, we see that logistic regression is a common approach for this problem. However, there is no solution with a complete Bayesian approach, and that is where our model differ from the work of other Kagglers. 
 
 ## Data preprocessing and cleaning
+We can explore the data by plotting histograms for the features corresponding with their target values. The histograms can provide insights regarding the correlation between the explanatory variables (features) with the target variables Risk.
+
+```{r, echo=FALSE}
+ageplot <- ggplot(credit_risk, aes(x=Age, fill=Risk)) +
+  labs(y="") +
+  geom_histogram() + theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=20), legend.text=element_text(size=20), legend.title =element_text(size=20) )
+
+sexplot <- ggplot(credit_risk, aes(x=Sex, fill=Risk)) +
+  labs(y="") +
+  geom_bar()+ theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=20))+ guides(fill="none")
+
+jobplot <- ggplot(credit_risk, aes(x=Job, fill=Risk)) + guides(fill="none")+
+  labs(y="") +
+  geom_bar()+ theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=20))
+
+housingplot <- ggplot(credit_risk, aes(x=Housing, fill=Risk))+
+  labs(y="") + guides(fill="none") +
+  geom_bar()+ theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=20))
+
+savingplot <- ggplot(credit_risk, aes(x=Saving.accounts, fill=Risk)) + guides(fill="none")+
+  labs(y="") +
+  geom_bar()+ theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=20))
+
+checking_plot <- ggplot(credit_risk, aes(x=Checking.account, fill=Risk))+ guides(fill="none") +
+  labs(y="") +
+  geom_bar()+ theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=20))
+
+credit_plot <- ggplot(credit_risk, aes(x=Credit.amount, fill=Risk)) + guides(fill="none")+
+  labs(y="") +
+  geom_histogram()+ theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=20))
+
+duration <- ggplot(credit_risk, aes(x=Duration, fill=Risk))+ guides(fill="none") +
+  labs(y="") +
+  geom_histogram()+ theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=20))
+
+purpose_plot <- ggplot(credit_risk, aes(x=Purpose, fill=Risk)) +
+  labs(y="") +
+  geom_bar() + guides(fill="none") + 
+  theme(legend.position="top")+ theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=20))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='hide', fig.align='center', fig.height=6, fig.width=25}
+ggarrange(ageplot, credit_plot, duration, ncol=3, common.legend=TRUE)
+ggarrange(housingplot, jobplot, sexplot, ncol=3)
+ggarrange(savingplot, checking_plot, ncol=2)
+purpose_plot
+```
+There are some issues that can be observed from the histograms:
+
+- The variables Saving.accounts and Checking.accounts have `NA` values.
+- The continuous variables Credit.amount and Duration have strong outliers, as their histograms clearly show a few larger values seperating themselves from the rest of the population.
+- The discrete variables Saving.accounts and Purpose have a high sparse level. Their histograms show that the data was categorized into too many groups while some groups are relatively low in population.
+
+We have provide some fix to these issues:
+
+- In order to resolve the high `NA` values presented in two of the features, we decided to impute the missing data with the mode (most frequent value) of data, which, from the plots, is the "`little`" value. Mode imputation is an popular method for filling missing data of categorical data, especially when the data is unbalanced and highly skewed towards the most frequent value like Saving.accounts and Checking.accounts. 
+
+- To resolve the outliers presented in the Credit.amount and Duration, because they are very little in population, we can just remove them from the data. For Credit.amount, we remove all data points containing values larger than 15000; for Duration, we remove all data points with values larger than 65.
+
+- To resolve the high sparse level presented in Saving.accounts and Purpose, a possible solution could be merging the less populated groups with the relevant counterparts. With Saving.accounts, we merge the `rich` and `quite rich` values with each other; with Purpose, we merge `domestic appliances` with `funiture/equipment`, `repairs` with `vacation/others`. This fix will help to data to be less scattered and make the models constructed later to predict stronger results.
+
+One additional, but important, step that could be made to our data is standardization. The input consists of different variables (categorical, numerical, textual) with distinct scales so standardizing them is vital for the models to perform better. In addition, standardizing can facilitate the process of prior choosing for the features, since all variables are on the same scale. To standardize, we transform each explanatory variables to numerical, then scale them so that their mean $=0$ and standard deviation $=1$.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+# Impute NA
+get_mode <- function(x) {
+  ux <- unique(x)
+  ux <- na.omit(ux)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+credit_risk$`Saving.accounts`[is.na(credit_risk$`Saving.accounts`)] <- get_mode(credit_risk$`Saving.accounts`)
+credit_risk$`Checking.account`[is.na(credit_risk$`Checking.account`)] <- get_mode(credit_risk$`Checking.account`)
+
+miss <- function(x){sum(is.na(x))/length(x)*100}
+apply(credit_risk, 2, miss)
+
+# Merge sparse values
+credit_risk$Purpose <- plyr::mapvalues(credit_risk$Purpose,
+                                       from = c("business","car","domestic appliances",
+                                      "education","furniture/equipment","radio/TV","repairs","vacation/others"), 
+                                      to = c("business","car","furniture/equipment","education",
+                                             "furniture/equipment","radio/TV","others","others")) 
+credit_risk$Saving.accounts <- plyr::mapvalues(credit_risk$Saving.accounts, 
+                                         from =c("little","moderate","quite rich","rich"), 
+                                         to = c("little","moderate","rich","rich"))
+
+# Remove outliers
+credit_risk <- credit_risk[credit_risk$Credit.amount < 15000,]
+credit_risk <- credit_risk[credit_risk$Duration < max(credit_risk$Duration),]
 
 
-## Explanatory variables selection
+# Suffle data
+credit_risk <- credit_risk[sample(nrow(credit_risk)), ]
 
+
+# Convert data into numerical data
+credit_risk$Sex = as.numeric(factor(credit_risk$Sex))
+credit_risk$Housing = as.numeric(factor(credit_risk$Housing))
+credit_risk$Saving.accounts = as.numeric(factor(credit_risk$Saving.accounts))
+credit_risk$Checking.account = as.numeric(factor(credit_risk$Checking.account))
+credit_risk$Purpose = as.numeric(factor(credit_risk$Purpose))
+credit_risk$Risk = as.numeric(factor(credit_risk$Risk)) - 1
+
+# Standardize data
+data_pooled <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk")], ~(scale(.) %>% as.vector))
+data_hierarchical <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(credit_risk) %in% c("Risk", "Purpose")], ~(scale(.) %>% as.vector))
+```
+
+## Explanatory variables analysis
+We can select the final explanatory variables for the models by using a correlation matrix to shows the correlated level of each variables with each other.
+
+```{r, r, echo=FALSE, message=FALSE, warning=FALSE, results='hide', out.width='70%', fig.align='center'}
+ggcorrplot(cor(credit_risk), lab = TRUE, lab_size = 3)
+```
+
+From the correlation plot, we observe no correlation greater than $0.9$ so no significant multicollinearity is presented. However, it is noticable that the Housing variable shows the lowest correlation with the target variable (only $-0.02$), indicating that it is quite insignificant to the sampling process. This should be noted, as later on, some actions will be taken to to diminish its effect on the results. 
+
+In conclusion, the explanatory variables are chosen for the pooled are Age, Sex, Job, Housing, Saving.accounts, Checking.account, Duration, Purpose, with Housing being the less correlated with the target values. For the hierarchical model, however, Purpose will instead be used as a levels grouping variable and will be excluded from the explanatory variables. 
 # Models description
 
 ## Pooled Logistic Regression model
+The Logistic Regression model is used to classify the risk $y_i$ in lending a loan based on the observation $x_i$. Its predictor $p$ is parameterized with an intercept $\beta_0$ and explanatory coefficients $\beta_1,\beta_2,..., \beta_k$ as follows:
+
+$$
+p = \frac{e^{\beta_0+\beta_1 x_1+...+\beta_k x_k}}{1-e^{\beta_0+\beta_1 x_1+...+\beta_k x_k}}, \text{ or } p= logit^{-1}(\beta_0+\beta_1 x_1+...+\beta_k x_k)
+$$
+The target variable $y$ for the observations $x$ follows the distribution:
+$$
+y \sim Bernoulli(p)=Bernoulli(logit^{-1}(\beta_0+\beta_1 x_1+...+\beta_k x_k))
+$$
 
 ### Prior justification
+
 
 ### Running the model
 
