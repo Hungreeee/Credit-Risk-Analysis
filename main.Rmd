@@ -14,6 +14,7 @@ library(ggpubr)
 library(tidyr)
 library(dplyr)
 library(ggcorrplot)
+library(latex2exp)
 library(gridExtra)
 library(plyr)
 library(loo)
@@ -54,25 +55,35 @@ apply(credit_risk, 2, miss)
 ```
 
 ```{r}
-ggplot(credit_risk, aes(x=Age, fill=Risk)) +
-  geom_histogram()
+ageplot <- ggplot(credit_risk, aes(x=Age, fill=Risk)) +
+  labs(y="") +
+  geom_histogram() + theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=20,face="bold"))
 ```
 ```{r}
-ggplot(credit_risk, aes(x=Sex, fill=Risk)) +
-  geom_bar()
+sexplot <- ggplot(credit_risk, aes(x=Sex, fill=Risk)) +
+  labs(y="") +
+  geom_bar()+ theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=20,face="bold"))
 ```
 ```{r}
-ggplot(credit_risk, aes(x=Job, fill=Risk)) +
-  geom_bar()
+jobplot <- ggplot(credit_risk, aes(x=Job, fill=Risk)) +
+  labs(y="") +
+  geom_bar()+ theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=20,face="bold"))
 ```
 ```{r}
-ggplot(credit_risk, aes(x=Housing, fill=Risk)) +
-  geom_bar()
+housingplot <- ggplot(credit_risk, aes(x=Housing, fill=Risk)) +
+  labs(y="") +
+  geom_bar()+ theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=20,face="bold"))
 ```
 
 ```{r}
-ggplot(credit_risk, aes(x=Saving.accounts, fill=Risk)) +
-  geom_bar()
+savingplot <- ggplot(credit_risk, aes(x=Saving.accounts, fill=Risk)) +
+  labs(y="") +
+  geom_bar()+ theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=20,face="bold"))
 ```
 ```{r}
 credit_risk$Saving.accounts <- plyr::mapvalues(credit_risk$Saving.accounts, 
@@ -80,20 +91,19 @@ credit_risk$Saving.accounts <- plyr::mapvalues(credit_risk$Saving.accounts,
                                          to = c("little","moderate","rich","rich"))
 ```
 
-```{r}
-ggplot(credit_risk, aes(x=Saving.accounts, fill=Risk)) +
-  geom_bar()
-```
-
 
 ```{r}
-ggplot(credit_risk, aes(x=Checking.account, fill=Risk)) +
-  geom_bar()
+checking_plot <- ggplot(credit_risk, aes(x=Checking.account, fill=Risk)) +
+  labs(y="") +
+  geom_bar()+ theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=20,face="bold"))
 ```
 
 ```{r}
-ggplot(credit_risk, aes(x=Credit.amount, fill=Risk)) +
-  geom_histogram()
+credit_plot <- ggplot(credit_risk, aes(x=Credit.amount, fill=Risk)) +
+  labs(y="") +
+  geom_histogram()+ theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=20,face="bold"))
 ```
 
 ```{r}
@@ -101,13 +111,10 @@ credit_risk <- credit_risk[credit_risk$Credit.amount < 10000,]
 ```
 
 ```{r}
-ggplot(credit_risk, aes(x=Credit.amount, fill=Risk)) +
-  geom_histogram()
-```
-
-```{r}
-ggplot(credit_risk, aes(x=Duration, fill=Risk)) +
-  geom_histogram()
+duration <- ggplot(credit_risk, aes(x=Duration, fill=Risk)) +
+  labs(y="") +
+  geom_histogram()+ theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=20,face="bold"))
 ```
 
 ```{r}
@@ -115,14 +122,11 @@ credit_risk <- credit_risk[credit_risk$Duration < max(credit_risk$Duration),]
 ```
 
 ```{r}
-ggplot(credit_risk, aes(x=Duration, fill=Risk)) +
-  geom_histogram()
-```
-
-```{r}
-ggplot(credit_risk, aes(x=Purpose, fill=Risk)) +
+purpose_plot <- ggplot(credit_risk, aes(x=Purpose, fill=Risk)) +
+  labs(y="") +
   geom_bar() + 
-  theme(axis.text.x=element_text(angle=40, hjust=1))
+  theme(axis.text.x=element_text(angle=40, hjust=1), legend.position="top")+ theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=20,face="bold"))
 ```
 
 ```{r}
@@ -133,9 +137,11 @@ credit_risk$Purpose <- plyr::mapvalues(credit_risk$Purpose,
                                              "furniture/equipment","radio/TV","others","others")) 
 ```
 
-```{r}
-ggplot(credit_risk, aes(x=Purpose, fill=Risk)) +
-  geom_bar()
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='hide', fig.align='center', fig.height=6, fig.width=25}
+ggarrange(ageplot, credit_plot, duration, ncol=3, common.legend=TRUE)
+ggarrange(housingplot, jobplot, sexplot, ncol=3, common.legend=TRUE)
+ggarrange(savingplot, checking_plot, ncol=2, common.legend=TRUE)
+purpose_plot
 ```
 
 ```{r}
@@ -220,16 +226,22 @@ ggplot(data=as.data.frame(r_hat)) +
 ```
 
 ```{r}
+r_hat = summary(hierarchical_fit)$summary[,"Rhat"]
+ggplot(data=as.data.frame(r_hat)) +
+  geom_histogram(aes(x=`r_hat`)) 
+```
+
+```{r}
 mcmc_neff(neff_ratio(pooled_fit))
 
 mcmc_neff(neff_ratio(hierarchical_fit))
 ```
 
 ```{r}
-r_hat = summary(hierarchical_fit)$summary[,"Rhat"]
-ggplot(data=as.data.frame(r_hat)) +
-  geom_histogram(aes(x=`r_hat`)) 
+mcmc_nuts_divergence(nuts_params(hierarchical_fit), log_posterior(hierarchical_fit), chain = 4)
+mcmc_nuts_divergence(nuts_params(pooled_fit), log_posterior(pooled_fit), chain = 4)
 ```
+
 
 ```{r}
 pooled_loo <- loo(pooled_fit)
@@ -336,8 +348,8 @@ prior_pooled_posterior <- as_tibble(prior_pooled_draws$`beta_0`)
 
 scale=seq(-5, 5.5, by=0.1)
        
-current_pooled_prior <- data_frame(x=scale, y=dnorm(scale, mean=0, sd=1))
-tested_pooled_prior <- data_frame(x=scale, y=dnorm(scale, mean=2, sd=0.3))
+current_pooled_prior <- tibble(x=scale, y=dnorm(scale, mean=0, sd=1))
+tested_pooled_prior <- tibble(x=scale, y=dnorm(scale, mean=2, sd=0.3))
 
 pooled_prior_comp <- ggplot() +
   geom_line(data=current_pooled_prior, aes(x=x, y=y)) +
@@ -371,11 +383,11 @@ prior_hierarchical_posterior <- as_tibble(prior_hierarchical_draws$`beta_0[1]`)
 
 scale <- seq(-5, 5.5, by=0.1)
        
-current_hierarchical_prior_mu <- data_frame(x=scale, y=dnorm(scale, mean=0, sd=1))
-tested_hierarchical_prior_mu <- data_frame(x=scale, y=dnorm(scale, mean=2, sd=0.3))
+current_hierarchical_prior_mu <- tibble(x=scale, y=dnorm(scale, mean=0, sd=1))
+tested_hierarchical_prior_mu <- tibble(x=scale, y=dnorm(scale, mean=2, sd=0.3))
 
-current_hierarchical_prior_sigma <- data_frame(x=scale, y=dnorm(scale, mean=0, sd=1))
-tested_hierarchical_prior_sigma <- data_frame(x=scale, y=dnorm(scale, mean=2, sd=0.5))
+current_hierarchical_prior_sigma <- tibble(x=scale, y=dnorm(scale, mean=0, sd=1))
+tested_hierarchical_prior_sigma <- tibble(x=scale, y=dnorm(scale, mean=2, sd=0.5))
 
 hierarchical_prior_comp_mu <- ggplot() +
   geom_line(data=current_hierarchical_prior_mu, aes(x=x, y=y)) +
