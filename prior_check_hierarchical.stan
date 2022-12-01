@@ -44,11 +44,12 @@ model {
 
 generated quantities {
   int<lower=0, upper=1> y_pred[N_test];
+  vector[N_train] log_lik;
   
   for(i in 1:N_test) 
     y_pred[i] = bernoulli_logit_rng(beta_0[ll_test[i]] + X_test[i] * beta[ll_test[i]]);
     
-  vector[N_train] log_lik;
+  
   for(i in 1:N_train) 
     log_lik[i] = bernoulli_logit_lpmf(y_train[i] | beta_0[ll_train[i]] + X_train[i] * beta[ll_train[i]]);
   
