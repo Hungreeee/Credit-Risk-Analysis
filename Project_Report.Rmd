@@ -41,7 +41,7 @@ One of the most important services of banks that attract their customers is prov
 
 The reason this topic is chosen is because of its meaningfulness and significance to the credit market, and the fact that there has been limited Bayesian data analysis project performed on the topic. Our goal is to use Logistic Regression to identify the riskiness of a loan by classifying them into good and bad loan. A pooled and hierarchical models will be applied to this problem, and through results analysis, we can compare and choose a stronger-performed model for this problem.
 
-The report consists of the following parts: Introduction, Data description, Models, Results, Discussion, Conclusion, and Appendices. First, we formulate the problem and show how we handle the data through pre-processing and feature selection process. In the Models section, we describe the two Stan models used and justify their likelihood and justification of their choice. In the Results section, we perform analyze the performance of the models through convergence analysis, posterior predictive checks, predictive performance assessment, model selection, and prior sensitivity analysis. Finally, in the Discussion and Conclusion section, we will address the issues and potential improvements for our models, as well as some interesting insights that we have learned while doing the project. The Appendices part will include all the Stan models being used in this report. 
+The report consists of the following parts: Introduction, Data description, Models, Results, Discussion, Conclusion, and Appendices. First, we formulate the problem and show how we handle the data through pre-processing and feature selection process. In the Models section, we describe the two Stan models used and justify their likelihood and justification of their choice. In the Results section, we analyze the performance of the models through convergence analysis, posterior predictive checks, predictive performance assessment, model selection, and prior sensitivity analysis. Finally, in the Discussion and Conclusion section, we will address the issues and potential improvements for our models, as well as provide some interesting insights that we have learned while doing the project. The Appendices part will include all the Stan models being used in this report. 
 
 # Data description
 The data set is obtained through Kaggle. It contains 1000 data points with 20 categorical attributes created by Professor Hofmann. In this data set, each entry represents a person taking a credit by a bank, and each person is classified as good or bad credit risks according to the set of attributes. The full data set can be found [here](https://www.kaggle.com/datasets/kabure/german-credit-data-with-risk).
@@ -50,14 +50,14 @@ The data consists of 10 columns, 9 explanatory variables and 1 target variable, 
 
 Explanatory variables:
 
-- Age (numerical): The age of the subject.
+- Age (numerical/continuous): The age of the subject.
+- Duration (numerical/continuous): The contracted loan due time (in month).
+- Credit.amount (numerical/continuous): The amount of credit of the subject's loan.
 - Sex (textual/categorical): The gender of the subject. This includes "`male`" and "`female`".
-- Job (numerical/categorical): The level of employment of the subject. This includes `0` - unskilled and non-resident, `1` - unskilled and resident, `2` - skilled, `3` - highly skilled.
+- Job (numerical/categorical): The level of employment of the subject. This includes `0` - unskilled and non-resident, "`1`" - unskilled and resident, "`2`" - skilled, "`3`" - highly skilled.
 - Housing (textual/categorical): The type of housing of the subject. This includes "`own`", "`rent`" and "`free`".
 - Saving.accounts (textual/categorical): The level of wealth of subject's saving account. This includes "`little`", "`moderate`", "`quite rich`", "`rich``".
 - Checking.account (textual/categorical): The level of wealth of subject's checking account. This includes "`little`", "`moderate`", "`quite rich`", "`rich``".
-- Credit.amount (numerical): The amount of credit of the subject's loan.
-- Duration (numerical): The contracted loan due time (in month).
 - Purpose (textual/categorical): The purpose of the subject's loan.
 
 Target variable:
@@ -597,8 +597,8 @@ hierarchical_prior_comp_mu <- ggplot() +
 
 scale <- seq(0, 6.5, by=0.1)
 
-current_hierarchical_prior_sigma <- data_frame(x=scale, y=dinvgamma(scale, shape=0.5, rate=1))
-tested_hierarchical_prior_sigma <- data_frame(x=scale, y=dinvgamma(scale, shape=1, rate=0.1))
+current_hierarchical_prior_sigma <- tibble(x=scale, y=dinvgamma(scale, shape=0.5, rate=1))
+tested_hierarchical_prior_sigma <- tibble(x=scale, y=dinvgamma(scale, shape=1, rate=0.1))
 
 hierarchical_prior_comp_sigma <- ggplot() +
   geom_line(data=current_hierarchical_prior_sigma, aes(x=x, y=y)) +
