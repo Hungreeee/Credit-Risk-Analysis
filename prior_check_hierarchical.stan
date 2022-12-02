@@ -1,6 +1,6 @@
 data {
-  int<lower=0> N_train; // Observation
-  int<lower=0> K; // Columns
+  int<lower=0> N_train; 
+  int<lower=0> K; 
   int<lower=0> L_train;
   matrix[N_train, K] X_train; 
   int<lower=0, upper=L_train> ll_train[N_train];
@@ -23,8 +23,8 @@ parameters {
 }
 
 model {
-  mu_0 ~ normal(2, 0.3);
-  sigma_0 ~ inv_gamma(1, 0.1);
+  mu_0 ~ normal(2, 0.3);       // Change prior
+  sigma_0 ~ inv_gamma(1, 0.1); // Change prior
   
   beta_0 ~ normal(mu_0, sigma_0);
   

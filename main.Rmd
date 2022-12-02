@@ -106,7 +106,7 @@ credit_plot <- ggplot(credit_risk, aes(x=Credit.amount, fill=Risk)) +
 ```
 
 ```{r}
-credit_risk <- credit_risk[credit_risk$Credit.amount < 13000,]
+credit_risk <- credit_risk[credit_risk$Credit.amount < max(credit_risk$Credit.amount),]
 ```
 
 ```{r}
@@ -181,7 +181,7 @@ X_train_pooled = subset(data_train, select=-c(`Risk`))
 X_test_pooled = subset(data_test, select=-c(`Risk`)) 
 
 credit_data_pooled <- list(N_train=nrow(X_train_pooled), 
-                            D=ncol(X_train_pooled), 
+                            K=ncol(X_train_pooled), 
                             X_train=X_train_pooled, 
                             y_train=y_train_pooled,
                             N_test=nrow(X_test_pooled),
@@ -204,7 +204,7 @@ ll_train = data_train$Purpose
 ll_test = data_test$Purpose
 
 credit_data_hierarchical <- list(N_train=nrow(X_train_hierarchical), 
-                                  D=ncol(X_train_hierarchical), 
+                                  K=ncol(X_train_hierarchical), 
                                   L_train=length(unique(ll_train)),
                                   ll_train=ll_train,
                                   X_train=X_train_hierarchical, 
@@ -222,6 +222,8 @@ Rhat
 r_hat = summary(pooled_fit)$summary[,"Rhat"]
 ggplot(data=as.data.frame(r_hat)) +
   geom_histogram(aes(x=`r_hat`))
+
+mcmc_rhat_hist(r_hat) + facet_text() + labs(title="Hey")
 ```
 
 ```{r}
@@ -312,20 +314,20 @@ hierarchical_conf_mat
 
 Accuracy
 ```{r}
-(pooled_conf_mat[1,1] + pooled_conf_mat[2, 2]) / 
+accuracy_pooled <- (pooled_conf_mat[1,1] + pooled_conf_mat[2, 2]) / 
   (pooled_conf_mat[1,1] + pooled_conf_mat[2, 2] + pooled_conf_mat[1,2] + pooled_conf_mat[2, 1])
 
-(hierarchical_conf_mat[1,1] + hierarchical_conf_mat[2, 2]) / 
+accuracy_hierarchical <- (hierarchical_conf_mat[1,1] + hierarchical_conf_mat[2, 2]) / 
   (hierarchical_conf_mat[1,1] + hierarchical_conf_mat[2, 2] + hierarchical_conf_mat[1,2] + hierarchical_conf_mat[2, 1])
-```
 
-False negative
-```{r}
-pooled_conf_mat[2,1]/ 
-  (pooled_conf_mat[1, 1] + pooled_conf_mat[2,1])
+sens_pooled <- pooled_conf_mat[2,2]/ 
+  (pooled_conf_mat[2, 2] + pooled_conf_mat[1,2])
 
-hierarchical_conf_mat[2,1]/ 
-  (hierarchical_conf_mat[1, 1] + hierarchical_conf_mat[2,1])
+sens_hierarchical <- hierarchical_conf_mat[2,2]/ 
+  (hierarchical_conf_mat[2, 2] + hierarchical_conf_mat[1,2])
+
+cat("Pooled model:\nAccuracy:", accuracy_pooled, "/ Specificity:", sens_pooled, "\n\n")
+cat("Hierarchical model:\nAccuracy:", accuracy_hierarchical, "/ Specificity:", sens_hierarchical)
 ```
 
 # prior check
@@ -365,12 +367,7 @@ pooled_posterior_comp <- ggplot() +
   scale_fill_manual(name="Priors", breaks=c("Original prior", "Alternative prior"), values=c("lightblue", "dodgerblue3")) +
   labs(x="beta_0 (Posterior)", y="density") 
 
-ggarrange(pooled_prior_comp, pooled_posterior_comp, ncol=2, common.legend=TRUE)
-```
-
-```{r}
-prior_pooled_loo <- loo(prior_pooled_fit)
-loo_compare(pooled_loo, prior_pooled_loo)
+annotate_figure(ggarrange(pooled_prior_comp, pooled_posterior_comp, ncol=2, common.legend=TRUE), top=text_grob("Pooled model")) 
 ```
 
 ```{r, warning=FALSE}
