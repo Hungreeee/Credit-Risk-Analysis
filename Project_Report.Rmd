@@ -54,15 +54,15 @@ Explanatory variables:
 - Duration (numerical/continuous): The contracted loan due time (in month).
 - Credit.amount (numerical/continuous): The amount of credit of the subject's loan.
 - Sex (textual/categorical): The gender of the subject. This includes "`male`" and "`female`".
-- Job (numerical/categorical): The level of employment of the subject. This includes `0` - unskilled and non-resident, "`1`" - unskilled and resident, "`2`" - skilled, "`3`" - highly skilled.
+- Job (numerical/categorical): The level of employment of the subject. This includes "`0`" - unskilled and non-resident, "`1`" - unskilled and resident, "`2`" - skilled, "`3`" - highly skilled.
 - Housing (textual/categorical): The type of housing of the subject. This includes "`own`", "`rent`" and "`free`".
 - Saving.accounts (textual/categorical): The level of wealth of subject's saving account. This includes "`little`", "`moderate`", "`quite rich`", "`rich``".
 - Checking.account (textual/categorical): The level of wealth of subject's checking account. This includes "`little`", "`moderate`", "`quite rich`", "`rich``".
-- Purpose (textual/categorical): The purpose of the subject's loan.
+- Purpose (textual/categorical): The purpose of the subject's loan. This includes "`business`", "`car`", "`domestic appliances`", "`education`", "`furniture/equipemt`", "`radio/TV`", "`repairs`", "`vacation/others`".
 
 Target variable:
 
-- Risk (textual/categorical): The fact that the subject has defaulted (not repaying the loan). This includes `good` - good loan (the subject has repaid on time), `bad` - bad loan (the subject has defaulted).
+- Risk (textual/categorical): The fact that the subject has defaulted (not repaying the loan). This includes "`good`" - good loan (the subject has repaid on time), "`bad`" - bad loan (the subject has defaulted).
 
 The data set have missing data: the columns Saving.accounts and Checking account both contain `NA` values (missing variables), which takes $18.3$% and $39.4$% of the total observations, respectively.
 ```{r, echo=FALSE, comment=""}
@@ -139,7 +139,7 @@ We have provided the following solutions to these issues:
 
 - To resolve the outliers presented in the Credit.amount and Duration, because they are very little in population, we can just remove them from the data. For Credit.amount, we remove the maximum data point; for Duration, the outlier is also just a single data point so we just delete the maximum of the column from the data.
 
-- To resolve the high sparse level presented in Saving.accounts and Purpose, a possible solution could be merging the less populated groups with the relevant counterparts. With Saving.accounts, we merge the "`rich`" and "`quite rich`" values into "`rich`"; with Purpose, we merge `domestic appliances` with `funiture/equipment` into "`funiture/equipment`", `repairs` with `vacation/others` into "`others`". This fix will help to data to be less scattered and make the models constructed later to predict more robust results.
+- To resolve the high sparse level presented in Saving.accounts and Purpose, a possible solution could be merging the less populated groups with the relevant counterparts. With Saving.accounts, we merge the "`rich`" and "`quite rich`" values into "`rich`"; with Purpose, we merge "`domestic appliances`" with "`funiture/equipment`" into "`funiture/equipment`", "`repairs`" with "`vacation/others`" into "`others`". This fix will help to data to be less scattered and make the models constructed later to predict more robust results.
 
 One additional but important step that could be made to our data is standardization. The input consists of different variables (categorical, numerical, textual) with distinct scales so standardizing them is vital for the models to perform better. In addition, standardizing can facilitate the process of prior choosing for the features, since all variables are on the same scale. To standardize, we transform all variables (including target) to numerical. Then, we scale the explanatory variables them so that their mean $=0$ and standard deviation $=1$. 
 
@@ -190,7 +190,7 @@ data_hierarchical <- credit_risk %>% mutate_at(colnames(credit_risk)[!colnames(c
 ```
 
 ## Explanatory variables analysis
-We can select the final explanatory variables for the models by using a correlation matrix to shows the correlated level of each variables with each other.
+We can select the final explanatory variables for the models by using a correlation matrix to visualize the correlated level of each variables with each other.
 
 ```{r, r, echo=FALSE, message=FALSE, warning=FALSE, results='hide', out.width='70%', fig.align='center'}
 ggcorrplot(cor(credit_risk), lab = TRUE, lab_size = 3)
@@ -198,7 +198,7 @@ ggcorrplot(cor(credit_risk), lab = TRUE, lab_size = 3)
 
 From the correlation plot, we observe no correlation greater than $0.9$ between the features so no significant multicollinearity is presented. However, it is noticable that the Housing variable shows the lowest correlation with the target variable (only $-0.02$), indicating that it is quite insignificant to the sampling process. This should be noted, as later on, some actions will be taken to to diminish its effect on the results. 
 
-In conclusion, the explanatory variables are chosen for the pooled are Age, Sex, Job, Housing, Saving.accounts, Checking.account, Duration, Purpose, with Housing being the less correlated with the target values. For the hierarchical model, however, Purpose will instead be used as a levels grouping variable and will be excluded from the explanatory variables.
+In conclusion, for the pooled model, the chosen explanatory variables are Age, Sex, Job, Housing, Saving.accounts, Checking.account, Duration, Purpose, with Housing being the less correlated with the target values. For the hierarchical model, the features remain the same but the variable Purpose will instead be used as a hierarchical grouping variable and will be excluded from the explanatory variables. The chosen target for both models is the Risk variable.
 
 # Models description
 
@@ -221,13 +221,13 @@ Because of the standardized data, we may assume a commonly-used generic weakly i
 $$
 \beta_0, \beta_1,...,\beta_k \sim normal(0, 1)
 $$
-A Normal distribution with location parameter of 0 expresses our little knowledge of whether a change in input variables can affect the predicted target, while a standard deviation of 1 widens the shape of the distribution so that it, softly concentrates below the scale, which is weakly informative enough for our standardized data.
+A Normal distribution with location parameter of 0 expresses our little knowledge of how a change in input variables can affect the predicted target, while a standard deviation of 1 widens the shape of the distribution so that it, softly concentrates below the scale, which is weakly informative enough for our standardized data.
 
 However, as noted, for the potentially irrelevant variable Housing, which corresponds to $\beta_3$, we assume an informative prior:
 $$
 \beta_3 \sim normal(0, 0.01)
 $$
-This informative prior serves as an powerful *regularization prior* scaling the insignificant coefficient $\beta_3$ to nearly zero, but not completely disregard them from the model, therefore shrinking its effect on the results. This effect shrinkage idea is to justify model selection, according to [Paul et al. (2014)](#references). 
+This informative prior serves as an powerful *regularization prior* scaling the insignificant coefficient $\beta_3$ to nearly zero, but not completely disregard them from the model, therefore shrinking its effect on the results. This effect shrinkage idea is to justify model selection, according to [Hahn et al. (2014)](#references). 
 
 ### Running the model
 Before running, the input data was separated into training data and testing data with equal proportions (half) of the data. While the training set is used for the sampling process of the mode, the test set is utilized for predictions and accuracy testing purposes.
@@ -294,7 +294,7 @@ For the hyper-parameter $\sigma^2$, we assume a weakly-informative inverse-gamma
 $$
 \sigma_i^2 \sim InvGamma(0.5, 1)
 $$
-In hierarchical modelling, the inverse-gamma distribution is a common prior for hyper variance estimating. The shape of this distribution has a wide and heavy right tail, indicating that it is positive and weakly-informative, which is suitable for our estimation for $\sigma^2$.
+In hierarchical modelling, the inverse-gamma distribution is a common prior for hyper variance estimating. The shape of the distribution $InvGamma(0.5, 1)$ has a wide and heavy right tail, indicating that it is positive and weakly-informative, which is suitable for our estimation for $\sigma^2$.
 
 For the weakly significant Housing variable, similar to the previous model, we assume informative regularization priors for the hyper parameters:
 \[
@@ -345,7 +345,8 @@ credit_data_hierarchical <- list(N_train=nrow(X_train_hierarchical),
                                   X_test=X_test_hierarchical)
 
 # Load and run data
-hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data_hierarchical, chains=4, iter=2000, warmup=1000)
+hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data_hierarchical, 
+                         chains=4, iter=2000, warmup=1000)
 ```
 
 # Results analysis
@@ -369,7 +370,7 @@ rhat_hierarchical <- mcmc_rhat_hist(r_hat_hierarhical) +
 
 ggarrange(rhat_pooled, rhat_hierarchical, ncol=2, common.legend=TRUE)
 ```
-The histograms clearly shows that all $\hat{R}$ values are smaller than $1.05$, and their distributions are relatively skewed at $1.00$. This suggests that the chains for both models have converged well.
+The histograms clearly shows that all $\hat{R}$ values are smaller than $1.05$, and their distributions are relatively focused at $1.00$. This suggests that the MCMC chains for both models have converged well.
 
 ### Effective sample size (ESS) diagnostics
 Instead of directly plotting the ESS, we instead plot another metrics called ESS ratio, which simply equals to $N_{\text{eff}}/N_{\text{sample}}$ - the ratios of effective sample size to total sample size. 
@@ -383,7 +384,7 @@ ess_hierarchical <- mcmc_neff_hist(neff_ratio(hierarchical_fit)) +
 
 ggarrange(ess_pooled, ess_hierarchical, ncol=2, common.legend=TRUE)
 ```
-From the histogram of the pooled model, although the $N_{\text{eff}}$ has a relatively odd distribution for the effective sample size, it is nothing to worry about. More importantly, it can be observed that most of the ratio are populated around $1.00$, and no ratio is below $0.1$, which is a critical threshold for detecting instability in the sampling process according to [Gelman et al. (2013)](#references). . This indicates that the pooled and the hierarchical models are stable and the results are reliable.
+From the histogram of the pooled model, although the $N_{\text{eff}}$ has a relatively odd distribution for the effective sample size, it is nothing to worry about. More importantly, it can be observed that most of the ratio are populated around $1.00$, and no ratio is below $0.1$, which is a critical threshold for detecting instability in the sampling process according to [Gelman et al. (2013)](#references). This indicates that the pooled and the hierarchical models are stable and the results are reliable.
 
 ### Diveregences and tree depth diagnostics
 We can access the parameters of the sampler for both models using `get_sampler_params`:
@@ -417,7 +418,7 @@ hierarchical_hist <- ppc_hist(y_test_hierarchical, ypred_hierarchical[1:5, ])
 
 ggarrange(pooled_dens, pooled_hist, hierarchical_dens, hierarchical_hist, nrow=2, common.legend=TRUE, legend="right")
 ```
-The density plots and the histograms draw the predictions from the testing data of both models and compared it with the original testing data. Although there is a small amount of noise, it is clear that the distribution of the predictions resemble that of the original data, implying that the pooled and the hierarchical model have generate robust posterior predictions. During the predictive performance assessment section, we will provide numerical metrics to evaluate the true performance of both models' predicting ability.
+The density plots and the histograms draw the predictions from the testing data of both models and compared it with the original testing data. Although there is a small amount of noise, it is clear that the distribution of the predictions resemble that of the original data, implying that the pooled and the hierarchical model have generate robust posterior predictions. In the predictive performance assessment section, we will provide numerical metrics to evaluate the true performance of both models' predicting ability.
 
 ## Model comparison
 Model comparison is performed using Leave-one-out cross-validation (LOO-CV), which will estimate the models' generalization performance. 
@@ -447,9 +448,9 @@ pooled_k <- ggplot() +
 
 ggarrange(pooled_k, hierarchical_k, ncol=2)
 ```
-While all Pareto $k$ values of the pooled model are below $0.5$, indicating that the results are very reliable, one of the $k$ values of the hierarchical model exceeds $0.7$, which is usually the threshold for bad values, indicating that the estimate for the hierarchical model may be too optimistic. 
+While all Pareto $k$ values of the pooled model are below $0.5$, indicating that the results are very reliable, one of the $k$ values of the hierarchical model exceeds $0.7$, which is usually the threshold for bad values, showing that the estimate for the hierarchical model might be too optimistic. 
 
-Nonetheless, the LOO-CV estimation of `elpd` for both models is given and compared as follows:
+The LOO-CV estimation of `elpd` for both models is given and compared as follows:
 
 Pooled model:
 ```{r, warning=FALSE, comment=""}
@@ -464,7 +465,7 @@ hierarchical_loo
 ```{r, comment=""}
 loo_compare(pooled_loo, hierarchical_loo)
 ```
-The `elpd` estimation (scaled by standard error) of the pooled model yields a higher value than that of the hierarchical model. Taking into account the fact that the hierarchical model also has instability resulting in a high Paretoo $k$ value, this suggests that the pooled model has a better performance and should be preferred.
+The `elpd` estimation (scaled by standard error) of the pooled model yields a higher value than that of the hierarchical model. Taking into account the fact that the hierarchical model also has instability resulting in a high Pareto $k$ value, this suggests that the pooled model has a better performance and should be preferred.
 
 ## Predictive performance assessment
 To have a better insight into the models' predictive power, we compute a the confusion matrix for them. For each data point of the testing set, we compute the mean of the predictions from 4000 chains. If the mean is larger than 0.5, the prediction is recorded as 1; otherwise, the prediction is rounded down to 0. The predictions are then compared with the original test set in order to compute the true positive (TP), false positive (FP), true negative (TN) and false positive (FN).
@@ -543,7 +544,7 @@ The $\beta_0$ in the pooled model will assume a relatively more informative prio
 
 The hierarchical model, on the other hand, will still assume the prior $\mathcal{N}(\mu_0, \sigma_o)$ for the intercept $\beta_{0,1}$ but take in a more informative prior for the hyper-parameters: $\sigma_0 \sim \mathcal{N}(2, 0.3)$ and $\mu_0 \sim InvGamma(1, 0.1)$ instead of the original $\mathcal{N}(0, 1)$, and $InvGamma(0.5, 1)$, respectively.
 
-This is done by fitting another model, with the only different are the priors being applied for $\beta_0$ for the pooled, and $\sigma_0$, $mu_0$ for the hierarchical model:
+This is done by fitting another model, with the only differences are the priors being applied for $\beta_0$ for the pooled, and $\sigma_0$, $mu_0$ for the hierarchical model:
 ```{r, warning=FALSE, message=FALSE, results='hide'}
 prior_pooled_fit <- stan(file="prior_check_pooled.stan", data=credit_data_pooled, 
                          chains=4, iter=2000, warmup=1000)
@@ -552,7 +553,7 @@ prior_hierarchical_fit <- stan(file="prior_check_hierarchical.stan", data=credit
 ```
 All the chains from the prior-check models have converged and no divergence warnings are given. This may suggest that our alternative prior choices are reasonable enough to be taken as references for the models' sensitivity assessing.
 
-The obtained posterior are compared with the original posterior as follows:
+The obtained posterior are compared with the original posterior along with the new and old priors as follows:
 ```{r, warning=FALSE, message=FALSE, results='hide', echo=FALSE, out.width='70%', fig.align='center'}
 current_pooled_draws <- as_draws_df(pooled_fit)
 prior_pooled_draws <- as_draws_df(prior_pooled_fit)
@@ -627,12 +628,12 @@ posterior_comp <- ggplot() +
 
 annotate_figure(ggarrange(hierarchical_prior_comp_mu, hierarchical_prior_comp_sigma, posterior_comp, ncol=3, common.legend=TRUE), top=text_grob("Hierarchical model"))
 ```
-From the plots, although the alternative priors are significantly informative compared to their original counterparts, the posteriors for $\beta_0$ and $\beta_{0,1}$ do not vary noticeably. Both of our models are therefore relatively robust to prior changes.
+For the pooled model, it is anticipated that the posterior will be shifted away due to the change in location parameter from the prior, but we can see that it only shifts the distribution slightly. Even with a considerable smaller scale parameter for the prior, the shape of the distribution hardly changes. For the hierarchical model, even with a significantly more informative hyper priors being applied, the resulting shape of the posterior does not vary too much. Therefore, it is concludable that both of our models are relatively robust to prior changes.
 
 # Conclusion and potential improvements
 
 ## Conclusion
-This project aimed to conduct analysis of two different Logistic Regression models, and the one that come out more reliable is the pooled model. We achieve a relatively good accuracy for both models: hierarchical model with approximately $70$% and pooled model with $72$%. However, with such a bad performance with detecting bad loans, which is the main target of any credit lender, both models are not economically meaningful and would not be appropriate with real-life use cases. Nonetheless, the models produce robust results in general and are useful for research purposes, as there has not been many credit risk analysis using Bayesian methods available.
+This project aimed to conduct analysis of two different Logistic Regression models, and the one that come out more reliable is the pooled model. We achieve a relatively good accuracy for both models: hierarchical model with approximately $70$% and pooled model with $72$%. However, with such a poor performance with detecting bad loans, which is the main target of any credit lender, both models are not economically meaningful and would not be appropriate with real-life use cases. Nonetheless, the models produce robust results in general and are useful for research purposes, as there has not been many credit risk analysis using Bayesian methods available out there.
 
 ## Issues and potential improvements
 At the beginning of the project, we were having problems with finding the appropriate priors for our models. As we have limited knowledge regarding the credit market field, it is challenging to assume anything concrete and we have to use the generic priors instead. In addition, we also have a lot of issues with Stan. We initially started the project using `cmdstan`, but it has a very limited use case with other libraries as they only accept a `rstan` fit object as a parameter. Therefore, we have to switch everything to `rstan` and work from the beginning. 
@@ -640,7 +641,7 @@ At the beginning of the project, we were having problems with finding the approp
 There are a lot of room for improvements that could be made to our project. One could be the imputation of missing data. The column `Checking.account` has a very high proportion of `NA` values (up to $39.4$%) and imputing with mode was not the best option. Instead, we could use $k$ nearest neighbor algorithm to impute the data better and avoid creating biases in the model. Another could be improving the prior estimation process. We could research more in the credit market field and introduce more relevant and robust prior distributions for our models. These measures may help improving the Specificity as well as the Accuracy of the model and be more economically practical. 
 
 # Self-reflection
-Throughout the group project, we have improved our understanding regarding the Bayesian data analysis working flow. Unlike the assignments, where all the data, the priors and the knowledge are given to us, we have to work very hard in order to gather data, try to find our own solution for problems and build our own models and create the project in a duration of 1 week. We initially chose the topic as we have both had Economics courses and become particularly interested with how the credit market work, and we found this great opportunity to understand more about it. This project benefits us not only knowledge, but also time management, task management, problem-solving and typing skills. We are satisfied we have created this project on our own and learn so many from it.
+Throughout the group project, we have improved our understanding regarding the Bayesian data analysis working flow. Unlike the assignments, where all the data, the priors and the knowledge are given to us, we have to work very hard in order to gather data, try to find our own solution for problems and build our own models and create the project in a duration of 1 week. We initially chose the topic as we have both had Economics courses and become particularly interested with how the credit market works, and we found this great opportunity to understand more about it. This project benefits us not only knowledge, but also time management, task management, problem-solving skill. We are satisfied we have created this project on our very own and learn so many valuable things from it.
 
 # Appendices and references
 
@@ -653,7 +654,14 @@ writeLines(readLines("pooled.stan"))
 ```{r, warning=FALSE, echo=FALSE, comment=""}
 writeLines(readLines("hierarchical.stan"))
 ```
-
+**Prior-testing pooled model:**
+```{r, warning=FALSE, echo=FALSE, comment=""}
+writeLines(readLines("prior_check_pooled.stan"))
+```
+**Prior-testing hierarchical model:**
+```{r, warning=FALSE, echo=FALSE, comment=""}
+writeLines(readLines("prior_check_hierarchical.stan"))
+```
 ## References 
 
 Hahn, Paul & Carvalho, Carlos. (2014). Decoupling Shrinkage and Selection in Bayesian Linear Models: A Posterior Summary Perspective. Journal of the American Statistical Association. 110. 10.1080/01621459.2014.993077. 
