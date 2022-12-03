@@ -130,7 +130,7 @@ purpose_plot
 There are several issues that can be observed from the histograms:
 
 - The variables Saving.accounts and Checking.account have `NA` values (which is also suggested at the Data set description section above).
-- The continuous variables Credit.amount and Duration have single-point outliers, as their histograms clearly show a significantly larger values clearly separating themselves from the rest of the population.
+- The continuous variables Credit.amount and Duration have single-point outliers, as their histograms both show single significantly larger values clearly separating themselves from the rest of the population.
 - The discrete variables Saving.accounts and Purpose have a high scatter level. That is, their histograms show that the data was categorized into too many groups while some groups are relatively low in population.
 
 We have provided the following solutions to these issues:
