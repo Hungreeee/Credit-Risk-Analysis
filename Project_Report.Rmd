@@ -28,7 +28,7 @@ library(loo)
 library(invgamma)
 
 set.seed(123)
-credit_risk <- read.csv(file="german_credit_data.csv")
+credit_risk <- read.csv(file="Resources/german_credit_data.csv")
 summary(credit_risk)
 credit_risk <- subset(credit_risk, select=-c(`X`))
 ```
@@ -261,7 +261,7 @@ credit_data_pooled <- list(N_train=nrow(X_train_pooled),
                             X_test=X_test_pooled)
 
 # Load and run data
-pooled_fit <- stan(file="pooled.stan", data=credit_data_pooled, 
+pooled_fit <- stan(file="Models/pooled.stan", data=credit_data_pooled, 
                    chains=4, iter=2000, warmup=1000)
 ```
 
@@ -269,7 +269,7 @@ pooled_fit <- stan(file="pooled.stan", data=credit_data_pooled,
 The hierarchical model, though resembles the pooled model in using Logistic Regression, is a relatively more complex model. As mentioned in the Explanatory variables analysis section, the data is categorized into $L$ groups using the categorical data in the Purpose variable. The coefficients $\beta_0, \beta_1,...,\beta_k$ is then sampled separately for each of $L$ groups using their own *hyper-parameters* $\mu$ and $\sigma^2$. The structuring of the model can be given as below:
 
 ```{r echo=FALSE, out.width='50%', fig.align='center'}
-knitr::include_graphics('hierarchical-structure.png')
+knitr::include_graphics('Resources/hierarchical-structure.png')
 ```
 
 With each of $L$ groups having their own $\beta_0, \beta_1,...,\beta_k$ sampled separately, we can build a Logistic Regression equation for the target variable:
@@ -345,7 +345,7 @@ credit_data_hierarchical <- list(N_train=nrow(X_train_hierarchical),
                                   X_test=X_test_hierarchical)
 
 # Load and run data
-hierarchical_fit <- stan(file="hierarchical.stan", data=credit_data_hierarchical, 
+hierarchical_fit <- stan(file="Models/hierarchical.stan", data=credit_data_hierarchical, 
                          chains=4, iter=2000, warmup=1000)
 ```
 
@@ -546,9 +546,9 @@ The hierarchical model, on the other hand, will still assume the prior $\mathcal
 
 This is done by fitting another model, with the only differences being the priors being applied for $\beta_0$ for the pooled, and $\sigma_0$, $mu_0$ for the hierarchical model:
 ```{r, warning=FALSE, message=FALSE, results='hide'}
-prior_pooled_fit <- stan(file="prior_check_pooled.stan", data=credit_data_pooled, 
+prior_pooled_fit <- stan(file="Models/prior_check_pooled.stan", data=credit_data_pooled, 
                          chains=4, iter=2000, warmup=1000)
-prior_hierarchical_fit <- stan(file="prior_check_hierarchical.stan", data=credit_data_hierarchical, 
+prior_hierarchical_fit <- stan(file="Models/prior_check_hierarchical.stan", data=credit_data_hierarchical, 
                                chains=4, iter=2000, warmup=1000)
 ```
 All the chains from the prior-check models have converged and no divergence warnings are given. This may suggest that our alternative prior choices are reasonable enough to be taken as references for the models' sensitivity assessing.
@@ -648,19 +648,19 @@ Throughout the group project, we improved our understanding of Bayesian data ana
 ## Stan code appendices
 **Pooled model:**
 ```{r, warning=FALSE, echo=FALSE, comment=""}
-writeLines(readLines("pooled.stan"))
+writeLines(readLines("Models/pooled.stan"))
 ```
 **Hierarchical model:**
 ```{r, warning=FALSE, echo=FALSE, comment=""}
-writeLines(readLines("hierarchical.stan"))
+writeLines(readLines("Models/hierarchical.stan"))
 ```
 **Prior-testing pooled model:**
 ```{r, warning=FALSE, echo=FALSE, comment=""}
-writeLines(readLines("prior_check_pooled.stan"))
+writeLines(readLines("Models/prior_check_pooled.stan"))
 ```
 **Prior-testing hierarchical model:**
 ```{r, warning=FALSE, echo=FALSE, comment=""}
-writeLines(readLines("prior_check_hierarchical.stan"))
+writeLines(readLines("Models/prior_check_hierarchical.stan"))
 ```
 ## References 
 
