@@ -44,7 +44,7 @@ The reason this topic is chosen is because of its meaningfulness and significanc
 The report consists of the following parts: Introduction, Data Description, Models, Results, Discussion, Conclusion, and Appendices. First, we formulate the problem and show how we handle the data through pre-processing and feature selection processes. In the Models section, we describe the two Stan models used and justify their likelihood and justification of their choice. In the Results section, we analyze the performance of the models through convergence analysis, posterior predictive checks, predictive performance assessment, model selection, and prior sensitivity analysis. Finally, in the Discussion and Conclusion section, we will address the issues and potential improvements for our models, as well as provide some interesting insights that we have learned while doing the project. The Appendices part will include all the Stan models being used in this report. The Stan models, as well as complete R code for this project, can be found [here](https://github.com/Hungreeee/Credit-Risk-Analysis).
 
 # Data description
-The data set is obtained through Kaggle. It contains 1000 data points with 20 categorical attributes created by Professor Hofmann. In this data set, each entry represents a person taking credit from a bank, and each person is classified as having good or bad credit risk according to the set of attributes. The full data set can be found [here](https://www.kaggle.com/datasets/kabure/german-credit-data-with-risk).
+The data set is obtained through Kaggle. It contains 1000 data points collected by Professor Hofmann. In this data set, each entry represents a person taking credit from a bank, and each person is classified as having good or bad credit risk according to the set of attributes. The full data set can be found [here](https://www.kaggle.com/datasets/kabure/german-credit-data-with-risk).
 
 The data consists of 10 columns, 9 explanatory variables, and 1 target variable, defined as follows:
 
@@ -55,7 +55,7 @@ Explanatory variables:
 - Credit.amount (numerical/continuous): The amount of credit of the subject's loan.
 - Sex (textual/categorical): The gender of the subject. This includes "`male`" and "`female`".
 - Job (numerical/categorical): The level of employment of the subject. This includes "`0`" - unskilled and non-resident, "`1`" - unskilled and resident, "`2`" - skilled, "`3`" - highly skilled.
-- Housing (textual/categorical): The type of housing of the subject. This includes "`own`", "`rent`" and "`free`".
+- Housing (textual/categorical): The type of     housing of the subject. This includes "`own`", "`rent`" and "`free`".
 - Saving.accounts (textual/categorical): The level of wealth of subject's saving account. This includes "`little`", "`moderate`", "`quite rich`", "`rich`".
 - Checking.account (textual/categorical): The level of wealth of subject's checking account. This includes "`little`", "`moderate`", "`quite rich`", "`rich`".
 - Purpose (textual/categorical): The purpose of the subject's loan. This includes "`business`", "`car`", "`domestic appliances`", "`education`", "`furniture/equipemt`", "`radio/TV`", "`repairs`", "`vacation/others`".
@@ -219,13 +219,13 @@ where $\beta_0$ is the intercept and each $\beta_1,\beta_2,..., \beta_k$ models 
 ### Prior justification
 Because of the standardized data, we may assume a commonly-used generic weakly informative prior for the explanatory coefficients:
 $$
-\beta_0, \beta_1,...,\beta_k \sim normal(0, 1)
+\beta_0, \beta_1,...,\beta_k \sim \mathcal{N}(0, 1)
 $$
 Normal distribution with a location parameter of 0 expresses our little knowledge of how a change in input variables can affect the predicted target, while a standard deviation of 1 widens the shape of the distribution so that it, softly concentrates below the scale, which is weakly informative enough for our standardized data.
 
 However, as noted, for the potentially irrelevant variable Housing, which corresponds to $\beta_3$, we assume an informative prior:
 $$
-\beta_3 \sim normal(0, 0.01)
+\beta_3 \sim \mathcal{N}(0, 0.01)
 $$
 This informative prior serves as an powerful *regularization prior* scaling the insignificant coefficient $\beta_3$ to nearly zero, but not completely disregard them from the model, therefore shrinking its effect on the results. This effect shrinkage idea is to justify model selection, according to [Hahn et al. (2014)](#references). 
 
@@ -261,7 +261,8 @@ credit_data_pooled <- list(N_train=nrow(X_train_pooled),
                             X_test=X_test_pooled)
 
 # Load and run data
-pooled_fit <- stan(file="Models/pooled.stan", data=credit_data_pooled, 
+pooled_fit <- stan(file="Models/pooled.stan", 
+                   data=credit_data_pooled, 
                    chains=4, iter=2000, warmup=1000)
 ```
 
@@ -345,7 +346,8 @@ credit_data_hierarchical <- list(N_train=nrow(X_train_hierarchical),
                                   X_test=X_test_hierarchical)
 
 # Load and run data
-hierarchical_fit <- stan(file="Models/hierarchical.stan", data=credit_data_hierarchical, 
+hierarchical_fit <- stan(file="Models/hierarchical.stan", 
+                         data=credit_data_hierarchical, 
                          chains=4, iter=2000, warmup=1000)
 ```
 
@@ -398,7 +400,7 @@ Hierarchical model:
 ```{r}
 summary(do.call(rbind, get_sampler_params(hierarchical_fit, inc_warmup=FALSE)))
 ```
-The NUTS sampler from both models encountered no divergences, as all the divergent statistics remain at 0. In addition, we can see that the tree depth maximum for both models does not exceed the threshold 10, indicating that the samplers are very stable.
+The NUTS sampler from both models encountered no divergences, as all the divergent statistics remain at 0. In addition, we can see that the tree depth maximum for both models does not exceed the threshold 10, indicating that the sampling process encounters no computational inefficiency and is stable. 
 
 ## Posterior predictive checks
 ```{r, warning=FALSE, message=FALSE, results='hide', echo=FALSE, out.width='70%', fig.align='center'}
@@ -546,9 +548,11 @@ The hierarchical model, on the other hand, will still assume the prior $\mathcal
 
 This is done by fitting another model, with the only differences being the priors being applied for $\beta_0$ for the pooled, and $\sigma_0$, $mu_0$ for the hierarchical model:
 ```{r, warning=FALSE, message=FALSE, results='hide'}
-prior_pooled_fit <- stan(file="Models/prior_check_pooled.stan", data=credit_data_pooled, 
+prior_pooled_fit <- stan(file="Models/prior_check_pooled.stan", 
+                         data=credit_data_pooled, 
                          chains=4, iter=2000, warmup=1000)
-prior_hierarchical_fit <- stan(file="Models/prior_check_hierarchical.stan", data=credit_data_hierarchical, 
+prior_hierarchical_fit <- stan(file="Models/prior_check_hierarchical.stan", 
+                               data=credit_data_hierarchical, 
                                chains=4, iter=2000, warmup=1000)
 ```
 All the chains from the prior-check models have converged and no divergence warnings are given. This may suggest that our alternative prior choices are reasonable enough to be taken as references for the models' sensitivity assessing.
