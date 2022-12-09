@@ -55,7 +55,7 @@ Explanatory variables:
 - Credit.amount (numerical/continuous): The amount of credit of the subject's loan.
 - Sex (textual/categorical): The gender of the subject. This includes "`male`" and "`female`".
 - Job (numerical/categorical): The level of employment of the subject. This includes "`0`" - unskilled and non-resident, "`1`" - unskilled and resident, "`2`" - skilled, "`3`" - highly skilled.
-- Housing (textual/categorical): The type of     housing of the subject. This includes "`own`", "`rent`" and "`free`".
+- Housing (textual/categorical): The type of housing of the subject. This includes "`own`", "`rent`" and "`free`".
 - Saving.accounts (textual/categorical): The level of wealth of subject's saving account. This includes "`little`", "`moderate`", "`quite rich`", "`rich`".
 - Checking.account (textual/categorical): The level of wealth of subject's checking account. This includes "`little`", "`moderate`", "`quite rich`", "`rich`".
 - Purpose (textual/categorical): The purpose of the subject's loan. This includes "`business`", "`car`", "`domestic appliances`", "`education`", "`furniture/equipemt`", "`radio/TV`", "`repairs`", "`vacation/others`".
@@ -139,7 +139,7 @@ We have provided the following solutions to these issues:
 
 - To resolve the outliers presented in the Credit.amount and Duration, because they are very little in population, we can just remove them from the data. For Credit.amount, we remove the maximum data point; for Duration, the outlier is also just a single data point so we just delete the maximum of the column from the data.
 
-- To resolve the high sparse level presented in Saving.accounts and Purpose, a possible solution could be merging the less populated groups with the relevant counterparts. With Saving.accounts, we merge the "`rich`" and "`quite rich`" values into "`rich`"; with Purpose, we merge "`domestic appliances`" with "`funiture/equipment`" into "`funiture/equipment`", "`repairs`" with "`vacation/others`" into "`others`". This fix will help to data to be less scattered and make the models constructed later to predict more robust results.
+- To resolve the high sparse level presented in Saving.accounts and Purpose, a possible solution could be merging the less populated groups with the relevant counterparts. With Saving.accounts, we merge the "`rich`" and "`quite rich`" values into "`rich`"; with Purpose, we merge "`domestic appliances`" with "`furniture/equipment`" into "`furniture/equipment`", "`repairs`" with "`vacation/others`" into "`others`". This fix will help to data to be less scattered and make the models constructed later to predict more robust results.
 
 One additional but important step that could be made to our data is standardization. The input consists of different variables (categorical, numerical, textual) with distinct scales so standardizing them is vital for the models to perform better. In addition, standardizing can facilitate the process of prior choice for the features, since all variables are on the same scale. To standardize, we transform all variables (including the target) to numerical. Then, we scale the explanatory variables them so that their mean $=0$ and standard deviation $=1$. 
 
@@ -201,6 +201,9 @@ From the correlation plot, we observe no correlation greater than $0.9$ between 
 In conclusion, for the pooled model, the chosen explanatory variables are Age, Sex, Job, Housing, Saving.accounts, Checking.account, Duration, and Purpose, with Housing being less correlated with the target values. For the hierarchical model, the features remain the same but the variable Purpose will instead be used as a hierarchical grouping variable and will be excluded from the explanatory variables. The chosen target for both models is the Risk variable.
 
 # Models description
+
+In this project, two models will be used and analyzed: a pooled model and a hierarchical model. For the statistical model, we choose Logistic Regression as the project aims to classify a binary outcome (bad loan: "0", good loan: "1"). The outcome $p$ of an event taking place is calculated by having the log-odds for the event be a linear combination of one or more independent variables, which are our chosen features.
+
 
 ## Pooled Logistic Regression model
 The Logistic Regression model is used to classify the risk $y$ in lending a loan based on the observation $x$. Its predictor $p$ is parameterized with an intercept $\beta_0$ and explanatory coefficients $\beta_1,\beta_2,..., \beta_k$ as follows:
