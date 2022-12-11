@@ -304,10 +304,10 @@ For the weakly significant Housing variable, similar to the previous model, we a
 \[
 \begin{gathered}
 \mu_3 \sim \mathcal{N}(0, 0.01) \\
-\sigma_3 \sim InvGamma(1, 0.01)
+\sigma^2_3 \sim InvGamma(1, 0.01)
 \end{gathered}
 \]
-The priors $\mathcal{N}(0, 0.01)$ and $InvGamma(1, 0.01)$ are strongly informative, they both scales the hyper means $\sigma_3$ and variance $\sigma_3$ of the Housing variable close to zero. As explained in the previous model, this is to shrink the effect of the potentially irrelevant variable Housing onto the sampling process of the model.
+The priors $\mathcal{N}(0, 0.01)$ and $InvGamma(1, 0.01)$ are strongly informative, they both scales the hyper mean and variance of the Housing variable close to zero. As explained in the previous model, this is to shrink the effect of the potentially irrelevant variable Housing onto the sampling process of the model.
 
 ### Running the model
 Before running, the input data was separated into training data and testing data with equal proportions (half) of the data. While the training set is used for the sampling process of the mode, the test set is utilized for predictions and accuracy testing purposes.
